@@ -1,0 +1,61 @@
+cmake_minimum_required(VERSION 3.28)
+
+if(APPLE)
+    execute_process(COMMAND brew --prefix OUTPUT_VARIABLE HOMEBREW_PREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message("Homebrew prefix: ${HOMEBREW_PREFIX}")
+    include_directories(${HOMEBREW_PREFIX}/include)
+    link_directories(${HOMEBREW_PREFIX}/lib)
+endif()
+
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  # Specify the commit you depend on and update it regularly.
+  URL https://github.com/google/googletest/releases/download/v1.17.0/googletest-1.17.0.tar.gz
+)
+# For Windows: Prevent overriding the parent project's compiler/linker settings
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+# specify clang
+SET(CMAKE_C_COMPILER clang)
+SET(CMAKE_CXX_COMPILER clang++)
+
+# specify the C++ standard
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+set(CMAKE_CXX_FLAGS "-Wall -Werror -Wno-deprecated-declarations -Wno-ignored-optimization-argument -Wno-deprecated-declarations -Wno-vla-cxx-extension")
+if(!APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
+endif()
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wunsafe-buffer-usage -Wunsafe-buffer-usage-in-container")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -funroll-loops")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -ggdb -O0 -fno-omit-frame-pointer -fsanitize=address -DDEBUG -DDEBUGINFO")
+
+# Set AVX flags for X86
+message("Detected platform: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
+if (NOT CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "arm64" AND NOT CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "aarch64")
+    if (NOT AVX OR AVX STREQUAL "" OR AVX STREQUAL "256")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2")
+    elseif(AVX STREQUAL "512")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx512bw")
+    endif()
+endif()
+
+# Cracktools unittest
+add_executable(unittest EXCLUDE_FROM_ALL
+    ${CMAKE_CURRENT_SOURCE_DIR}/primes.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/aliquot.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/factors.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/primes.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/primefactors.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/aliquot.cpp
+)
+target_include_directories(unittest
+    PUBLIC
+        ./
+        ../src/
+)
+target_link_libraries(unittest gtest_main gmp gmpxx)
+add_test(NAME unittest COMMAND unittest)
