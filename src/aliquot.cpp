@@ -1,4 +1,5 @@
 #include <iostream>
+#include <span>
 
 #include "gmpxx.h"
 
@@ -24,6 +25,20 @@ sum_of_divisors(
     return sum;
 }
 
+const bool
+detect_loop(
+    const std::span<const mpz_class> sequence,
+    const mpz_class& next_value
+)
+{
+    for (const auto& value : sequence.subspan(0, sequence.size() - 1)) {
+        if (value == next_value) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::vector<mpz_class>
 aliquot_sequence(
     const mpz_class& n,
@@ -34,12 +49,15 @@ aliquot_sequence(
     mpz_class current = n;
     while (true) {
         mpz_class sum = sum_of_divisors(current);
-        if (sum == 0 || sum == current) {
+        if (sum == 0) {
             break;
         }
-        sequence.push_back(sum);
         if (verbose)
             std::cout << sum << std::endl;
+        sequence.push_back(sum);
+        if (sum == current || detect_loop(sequence, sum)) {
+            break;
+        }
         current = sum;
     }
     return sequence;
