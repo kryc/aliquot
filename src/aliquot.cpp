@@ -48,7 +48,8 @@ std::vector<mpz_class>
 aliquot_sequence(
     const mpz_class& n,
     const std::string_view cache_path,
-    const bool verbose
+    const bool verbose,
+    const size_t num_threads
 )
 {
     PrimeFactorCache cache(cache_path);

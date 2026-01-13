@@ -1,4 +1,5 @@
 #include <iostream>
+#include <thread>
 
 #include <gmpxx.h>
 
@@ -23,6 +24,7 @@ int main(int argc, char* argv[]) {
     std::string_view prime_gaps;
     std::string_view cache_path;
     mpz_class number;
+    size_t num_threads = 0;
 
     for (int i = 1; i < argc; ++i) {
         std::string_view arg = argv[i];
@@ -34,6 +36,8 @@ int main(int argc, char* argv[]) {
             }
         } else if ((arg == "-c" || arg == "--cache") && i + 1 < argc) {
             cache_path = argv[++i];
+        } else if ((arg == "-t" || arg == "--threads") && i + 1 < argc) {
+            num_threads = static_cast<size_t>(std::stoul(argv[++i]));
         } else if (arg == "-h" || arg == "--help") {
             std::cout << HELP_STRING << std::endl;
             return 0;
@@ -47,9 +51,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    if (num_threads == 0) {
+        num_threads = std::thread::hardware_concurrency();
+    }
+
     try {
         std::cout << "Aliquot sequence for " << number << ":" << std::endl;
-        auto sequence = aliquot_sequence(number, cache_path, true);
+        auto sequence = aliquot_sequence(number, cache_path, true, num_threads);
         return 0;
     } catch (const std::exception& ex) {
         std::cerr << "Error during prime factorization: " << ex.what() << std::endl;
