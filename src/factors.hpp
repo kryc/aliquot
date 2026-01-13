@@ -16,10 +16,33 @@ public:
         factor_counts[factor]++;
     }
 
+    void update(
+        const PrimeFactors& other
+    ) {
+        for (const auto& [prime, count] : other.factor_counts) {
+            factor_counts[prime] += count;
+        }
+    }
+
     bool has_factor(
         const mpz_class& factor
     ) const {
         return factor_counts.find(factor) != factor_counts.end();
+    }
+
+    mpz_class
+    largest_factor(
+        void
+    ) const {
+        if (factor_counts.empty()) {
+            return 0;
+        }
+        return std::max_element(
+            factor_counts.begin(),
+            factor_counts.end(),
+            [](const auto& a, const auto& b) {
+                return a.first < b.first;
+            })->first;
     }
 
     size_t count(
@@ -54,6 +77,12 @@ public:
         return factor_counts.empty();
     }
 
+    void clear(
+        void
+    ) {
+        factor_counts.clear();
+    }
+
     std::vector<std::pair<mpz_class, size_t>> to_vector() const {
         std::vector<std::pair<mpz_class, size_t>> vec;
         for (const auto& pair : factor_counts) {
@@ -85,6 +114,32 @@ public:
             std::sort(composites.begin(), composites.end());
         }
         return composites;
+    }
+
+    mpz_class
+    product(
+        void
+    ) const {
+        mpz_class prod = 1;
+        mpz_class factor;
+        for (const auto& [prime, count] : factor_counts) {
+            mpz_pow_ui(factor.get_mpz_t(), prime.get_mpz_t(), count);
+            prod *= factor;
+        }
+        return prod;
+    }
+
+    uint64_t
+    product64(
+        void
+    ) const {
+        uint64_t prod = 1;
+        mpz_class factor;
+        for (const auto& [prime, count] : factor_counts) {
+            mpz_pow_ui(factor.get_mpz_t(), prime.get_mpz_t(), count);
+            prod *= factor.get_ui();
+        }
+        return prod;
     }
 
     std::vector<uint8_t>

@@ -76,3 +76,51 @@ TEST(Factors, CompositeLargePrimes)
         EXPECT_EQ(composites[i], expected[i]);
     }
 }
+
+TEST(Factors, CompositeEmpty)
+{
+    PrimeFactors factors;
+    auto composites = factors.get_composite();
+    // The only composite of an empty factorization is 1
+    ASSERT_EQ(composites.size(), 1);
+    EXPECT_EQ(composites[0], 1);
+}
+
+TEST(Factors, CompositeSinglePrime)
+{
+    PrimeFactors factors;
+    factors.add_factor(7);
+    auto composites = factors.get_composite();
+    // The composites of 7^1 are: 1, 7
+    std::vector<mpz_class> expected = {1, 7};
+    ASSERT_EQ(composites.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); ++i) {
+        EXPECT_EQ(composites[i], expected[i]);
+    }
+}
+
+TEST(Factors, CompositeSinglePrimeMultiple)
+{
+    PrimeFactors factors;
+    factors.add_factor(11);
+    factors.add_factor(11);
+    factors.add_factor(11);
+    auto composites = factors.get_composite(true);
+    // The composites of 11^3 are: 1, 11, 121, 1331
+    std::vector<mpz_class> expected = {1, 11, 121, 1331};
+    ASSERT_EQ(composites.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); ++i) {
+        EXPECT_EQ(composites[i], expected[i]);
+    }
+}
+
+TEST(Factors, Product)
+{
+    PrimeFactors factors;
+    factors.add_factor(2);
+    factors.add_factor(2);
+    factors.add_factor(3);
+    factors.add_factor(5);
+    mpz_class prod = factors.product();
+    EXPECT_EQ(prod, 60); // 2^2 * 3^1 * 5^1 = 60
+}

@@ -61,3 +61,39 @@ target_include_directories(primegen
                                 ${CMAKE_CURRENT_SOURCE_DIR}/src
                         )
 target_link_libraries(primegen PRIVATE gmp gmpxx)
+
+set(FACTORGEN_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/factorgen.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/primefactors.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/primes.cpp
+)
+add_executable(factorgen ${FACTORGEN_SOURCES})
+target_include_directories(factorgen
+                            PRIVATE
+                                ${CMAKE_CURRENT_SOURCE_DIR}/src
+                        )
+target_link_libraries(factorgen PRIVATE gmp gmpxx)
+
+set(CACHECHECK_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cachecheck.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/primefactors.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/primes.cpp
+)
+add_executable(cachecheck ${CACHECHECK_SOURCES})
+target_include_directories(cachecheck
+                            PRIVATE
+                                ${CMAKE_CURRENT_SOURCE_DIR}/src
+                        )
+target_link_libraries(cachecheck PRIVATE gmp gmpxx)
+
+set(CACHESORT_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cachesort.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/primefactors.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/primes.cpp
+)
+add_executable(cachesort ${CACHESORT_SOURCES})
+target_include_directories(cachesort
+                            PRIVATE
+                                ${CMAKE_CURRENT_SOURCE_DIR}/src
+                        )
+target_link_libraries(cachesort PRIVATE gmp gmpxx)

@@ -4,15 +4,20 @@
 #include "gmpxx.h"
 
 #include "aliquot.hpp"
+#include "isprime.hpp"
+#include "primefactorcache.hpp"
 #include "primefactors.hpp"
+#include "primes.hpp"
 
 mpz_class
 sum_of_divisors(
-    const mpz_class& n
+    const mpz_class& n,
+    PrimeFactorCache& cache,
+    IsPrime& is_prime
 )
 {
     // Get prime factors of n
-    auto factors = prime_factors(n);
+    auto factors = prime_factors(n, cache, is_prime);
     // Convert the prime factors to a vector of composite factors
     auto composites = factors.get_composite();
     // Sum the composite factors excluding n itself
@@ -42,13 +47,16 @@ detect_loop(
 std::vector<mpz_class>
 aliquot_sequence(
     const mpz_class& n,
+    const std::string_view cache_path,
     const bool verbose
 )
 {
+    PrimeFactorCache cache(cache_path);
+    IsPrime is_prime;
     std::vector<mpz_class> sequence;
     mpz_class current = n;
     while (true) {
-        mpz_class sum = sum_of_divisors(current);
+        mpz_class sum = sum_of_divisors(current, cache, is_prime);
         if (sum == 0) {
             break;
         }

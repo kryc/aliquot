@@ -96,7 +96,7 @@ generate_prime_gaps(
     return gaps;
 }
 
-std::optional<std::span<const uint8_t>>
+std::span<const uint8_t>
 get_prime_gaps(
     const uint64_t fallback_limit
 )
@@ -120,11 +120,7 @@ get_nth_prime(
         return 2;
     }
     
-    auto gaps_opt = get_prime_gaps();
-    if (!gaps_opt.has_value()) {
-        throw std::runtime_error("Failed to load prime gaps");
-    }
-    const auto& gaps = gaps_opt.value();
+    const auto& gaps = get_prime_gaps();
 
     mpz_class prime = 2;
     size_t gap_index = 1; // Start after the first gap which is for prime 2
@@ -134,18 +130,13 @@ get_nth_prime(
         // Get the next VLE-encoded gap
         uint64_t gap = 0;
         uint8_t shift = 0;
-        while (true) {
-            if (gap_index >= gaps.size()) {
-                throw std::runtime_error("Ran out of prime gaps");
-            }
-            uint8_t byte = gaps[gap_index];
+        uint8_t byte;
+        do {
+            byte = gaps[gap_index];
             gap |= static_cast<uint64_t>(byte & 0x7F) << shift;
             shift += 7;
             gap_index++;
-            if ((byte & 0x80) == 0) {
-                break;
-            }
-        }
+        } while ((byte & 0x80) != 0);
         prime += gap;
         count++;
     }
@@ -167,11 +158,7 @@ get_prime_index(
     const mpz_class& prime
 )
 {
-    auto gaps_opt = get_prime_gaps();
-    if (!gaps_opt.has_value()) {
-        throw std::runtime_error("Failed to load prime gaps");
-    }
-    const auto& gaps = gaps_opt.value();
+    const auto gaps = get_prime_gaps();
 
     mpz_class current_prime = 2;
     size_t gap_index = 1; // Start after the first gap which is for prime 2
@@ -181,18 +168,13 @@ get_prime_index(
         // Get the next VLE-encoded gap
         uint64_t gap = 0;
         uint8_t shift = 0;
-        while (true) {
-            if (gap_index >= gaps.size()) {
-                throw std::runtime_error("Ran out of prime gaps");
-            }
-            uint8_t byte = gaps[gap_index];
+        uint8_t byte;
+        do {
+            byte = gaps[gap_index];
             gap |= static_cast<uint64_t>(byte & 0x7F) << shift;
             shift += 7;
             gap_index++;
-            if ((byte & 0x80) == 0) {
-                break;
-            }
-        }
+        } while ((byte & 0x80) != 0);
         current_prime += gap;
         index++;
     }

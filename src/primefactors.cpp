@@ -4,28 +4,55 @@
 #include <gmpxx.h>
 
 #include "factors.hpp"
+#include "isprime.hpp"
+#include "primefactorcache.hpp"
 #include "primefactors.hpp"
 #include "primes.hpp"
 
 PrimeFactors
 prime_factors(
-    const mpz_class& n
+    const mpz_class& n,
+    PrimeFactorCache& cache,
+    IsPrime& is_prime
 )
 {
     // Get the span of prime gaps
     auto gaps = get_prime_gaps();
-    if (!gaps.has_value()) {
-        throw std::runtime_error("Failed to load prime gaps");
-    }
 
     PrimeFactors prime_factors;
 
     std::vector<mpz_class> factors;
-    mpz_class prime = 2;
-    size_t gap_index = 1;
+    mpz_class prime = 7;
+    size_t gap_index = 4;
     mpz_class remainder = n;
 
-    while (remainder > 1 && gap_index < gaps->size()) {
+    // Divide out 2, 3 and 5 first
+    while (remainder % 2 == 0) {
+        prime_factors.add_factor(2);
+        remainder /= 2;
+    }
+    while (remainder % 3 == 0) {
+        prime_factors.add_factor(3);
+        remainder /= 3;
+    }
+    while (remainder % 5 == 0) {
+        prime_factors.add_factor(5);
+        remainder /= 5;
+    }
+
+    while (remainder > 1 && gap_index < gaps.size()) {
+        // Check if the remainder is prime
+        if (is_prime.check_small(remainder)) {
+            prime_factors.add_factor(remainder);
+            return prime_factors;
+        }
+        // Check if we have the factor in cache
+        auto cached_factors = cache.product_exists(remainder.get_ui());
+        if (cached_factors.has_value()) {
+            auto cached = cached_factors.value();
+            prime_factors.update(cached);
+            return prime_factors;
+        }
         // Check if prime divides remainder
         while (remainder % prime == 0) {
             prime_factors.add_factor(prime);
@@ -36,18 +63,13 @@ prime_factors(
         // Get the next VLE-encoded gap
         uint64_t gap = 0;
         uint8_t shift = 0;
-        while (true) {
-            if (gap_index >= gaps->size()) {
-                throw std::runtime_error("Ran out of prime gaps");
-            }
-            uint8_t byte = (*gaps)[gap_index];
+        uint8_t byte;
+        do {
+            byte = gaps[gap_index];
             gap |= static_cast<uint64_t>(byte & 0x7F) << shift;
             shift += 7;
             gap_index++;
-            if ((byte & 0x80) == 0) {
-                break;
-            }
-        }
+        } while ((byte & 0x80) != 0);
         prime += gap;
     }
 

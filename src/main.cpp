@@ -8,8 +8,9 @@
 static const std::string_view HELP_STRING = R"(
 Usage: aliquot [options] <number>
 Options:
-  -p <file>   Load prime gaps from file
-  -h, --help  Show this help message
+    -p <file>   Load prime gaps from file
+    -c <path>   Path to prime factor cache
+    -h, --help  Show this help message
 )";
 
 int main(int argc, char* argv[]) {
@@ -20,16 +21,19 @@ int main(int argc, char* argv[]) {
     }
 
     std::string_view prime_gaps;
+    std::string_view cache_path;
     mpz_class number;
 
     for (int i = 1; i < argc; ++i) {
         std::string_view arg = argv[i];
-        if (arg == "-p" && i + 1 < argc) {
+        if ((arg == "-p" || arg == "--primes") && i + 1 < argc) {
             prime_gaps = argv[++i];
             if (!load_prime_gaps(prime_gaps)) {
                 std::cerr << "Failed to load prime gaps from " << prime_gaps << std::endl;
                 return 1;
             }
+        } else if ((arg == "-c" || arg == "--cache") && i + 1 < argc) {
+            cache_path = argv[++i];
         } else if (arg == "-h" || arg == "--help") {
             std::cout << HELP_STRING << std::endl;
             return 0;
@@ -45,7 +49,7 @@ int main(int argc, char* argv[]) {
 
     try {
         std::cout << "Aliquot sequence for " << number << ":" << std::endl;
-        auto sequence = aliquot_sequence(number, true);
+        auto sequence = aliquot_sequence(number, cache_path, true);
         return 0;
     } catch (const std::exception& ex) {
         std::cerr << "Error during prime factorization: " << ex.what() << std::endl;

@@ -19,7 +19,7 @@ generate_prime_gaps(
     const bool is_count
 );
 
-std::optional<std::span<const uint8_t>>
+std::span<const uint8_t>
 get_prime_gaps(
     const uint64_t fallback_limit = 65536ull
 );

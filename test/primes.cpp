@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "isprime.hpp"
 #include "primes.hpp"
 #include "primefactors.hpp"
 
@@ -93,4 +94,40 @@ TEST(Primes, GetPrimeIndex)
     mpz_class large_prime(882389); // 70000th prime
     auto large_index = get_prime_index(large_prime);
     EXPECT_EQ(large_index, 70000);
+}
+
+TEST(IsPrime, SmallPrimes)
+{
+    auto gaps = generate_prime_gaps(100, false);
+    IsPrime is_prime(gaps);
+    std::vector<mpz_class> small_primes = {
+        2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47
+    };
+    for (const auto& prime : small_primes) {
+        EXPECT_TRUE(is_prime.check(prime)) << "Failed for prime: " << prime;
+    }
+    std::vector<mpz_class> small_non_primes = {
+        0, 1, 4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20
+    };
+    for (const auto& non_prime : small_non_primes) {
+        EXPECT_FALSE(is_prime.check(non_prime)) << "Failed for non-prime: " << non_prime;
+    }
+}
+
+TEST(IsPrime, LargePrimes)
+{
+    auto gaps = generate_prime_gaps(100000, false);
+    IsPrime is_prime(gaps);
+    std::vector<mpz_class> large_primes = {
+        999983, 1000003, 1000033, 1000037, 1000039
+    };
+    for (const auto& prime : large_primes) {
+        EXPECT_TRUE(is_prime.check(prime)) << "Failed for prime: " << prime;
+    }
+    std::vector<mpz_class> large_non_primes = {
+        1000000, 1000010, 1000020, 1000030
+    };
+    for (const auto& non_prime : large_non_primes) {
+        EXPECT_FALSE(is_prime.check(non_prime)) << "Failed for non-prime: " << non_prime;
+    }
 }

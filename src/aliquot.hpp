@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cinttypes>
+#include <string_view>
 #include <vector>
 
 #include <gmpxx.h>
@@ -12,5 +14,6 @@ sum_of_divisors(
 std::vector<mpz_class>
 aliquot_sequence(
     const mpz_class& n,
+    const std::string_view cache_path = "",
     const bool verbose = false
 );
