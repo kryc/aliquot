@@ -1,5 +1,6 @@
 #include <future>
 #include <iostream>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -83,10 +84,13 @@ prime_factors_in_range(
     const mpz_class& n,
     const mpz_class& min_factor,
     const mpz_class& max_factor,
-    IsPrime& is_prime
+    IsPrime& is_prime,
+    PrimeFactors& prime_factors,
+    std::mutex& factor_mutex,
+    bool& found
 )
 {
-    PrimeFactors prime_factors;
+    // PrimeFactors prime_factors;
 
     mpz_class factor = min_factor;
     if (!is_prime.check(factor)) {
@@ -97,9 +101,23 @@ prime_factors_in_range(
         // Check if factor divides n (not a local remainder)
         mpz_class temp = n;
         while (temp % factor == 0) {
+            std::lock_guard<std::mutex> lock(factor_mutex);
             prime_factors.add_factor(factor);
             temp /= factor;
+            auto product = prime_factors.product();
+            if (product >= n) {
+                found = true;
+                break;
+            }
+            // Check if the remainder is prime
+            if (is_prime.check(temp)) {
+                prime_factors.add_factor(temp);
+                found = true;
+                break;
+            }
         }
+        if (found == true)
+            break;
         // Get next prime factor
         mpz_nextprime(factor.get_mpz_t(), factor.get_mpz_t());
     }
@@ -116,9 +134,13 @@ prime_factors_mt(
 )
 {
     // The minimum prime factor we need to check is 2
-    // The maximum prime factor we need to check is n/2
+    // The main range we want to check is from 2 to sqrt(n)
     mpz_class min_factor = 2;
-    mpz_class max_factor = n / 2;
+    mpz_class max_factor;
+    mpz_sqrt(max_factor.get_mpz_t(), n.get_mpz_t());
+    std::mutex factor_mutex;
+    PrimeFactors local_factors;
+    bool found = false;
 
     // Divide the search space among threads
     std::vector<std::future<PrimeFactors>> futures;
@@ -129,22 +151,30 @@ prime_factors_mt(
         mpz_class thread_max = (i == num_threads - 1) ? max_factor : (thread_min + range_size - 1);
         // std::cout << "Thread " << i << " searching range [" << thread_min << ", " << thread_max << "]" << std::endl;
 
-        futures.push_back(std::async(std::launch::async, [thread_min, thread_max, &n, &is_prime]() {
-            return prime_factors_in_range(n, thread_min, thread_max, is_prime);
+        futures.push_back(std::async(std::launch::async, [thread_min, thread_max, &n, &is_prime, &local_factors, &factor_mutex, &found]() {
+            return prime_factors_in_range(n, thread_min, thread_max, is_prime, local_factors, factor_mutex, found);
         }));
     }
 
-    PrimeFactors total_factors;
+    // PrimeFactors total_factors;
     for (auto& fut : futures) {
-        PrimeFactors thread_factors = fut.get();
-        total_factors.update(thread_factors);
+        fut.get();
     }
 
-    if (total_factors.product() < n) {
-        throw std::runtime_error("Failed to fully factor the number in the given range");
+    if (local_factors.product() < n) {
+        // If we didn't find all factors, check if the remaining quotient is prime
+        mpz_class current_product = local_factors.product();
+        mpz_class remainder = n / current_product;
+        if (remainder > 1) {
+            if (is_prime.check(remainder)) {
+                local_factors.add_factor(remainder);
+            } else {
+                throw std::runtime_error("Failed to fully factor the number in the given range.");
+            }
+        }
     }
 
-    return total_factors;
+    return local_factors;
 }
 
 PrimeFactors
