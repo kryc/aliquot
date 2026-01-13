@@ -14,8 +14,12 @@ mpz_class
 sum_of_divisors(
     const mpz_class& n,
     PrimeFactorCache& cache,
-    IsPrime& is_prime,
     const size_t num_threads
+);
+
+mpz_class
+sum_of_divisors(
+    const mpz_class& n
 );
 
 std::vector<mpz_class>

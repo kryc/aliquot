@@ -33,7 +33,7 @@ struct FactorRecord {
 class PrimeFactorCache {
 public:
     PrimeFactorCache(
-        const std::string_view path,
+        const std::string_view path = "",
         const bool write = false
     ) : cache_path(path) {
         if (cache_path.empty()) {

@@ -13,11 +13,11 @@ mpz_class
 sum_of_divisors(
     const mpz_class& n,
     PrimeFactorCache& cache,
-    IsPrime& is_prime
+    const size_t num_threads
 )
 {
     // Get prime factors of n
-    auto factors = prime_factors(n, cache, is_prime);
+    auto factors = prime_factors(n, cache);
     // Convert the prime factors to a vector of composite factors
     auto composites = factors.get_composite();
     // Sum the composite factors excluding n itself
@@ -28,6 +28,15 @@ sum_of_divisors(
         }
     }
     return sum;
+}
+
+mpz_class
+sum_of_divisors(
+    const mpz_class& n
+)
+{
+    PrimeFactorCache cache;
+    return sum_of_divisors(n, cache, std::thread::hardware_concurrency());
 }
 
 const bool
@@ -53,21 +62,22 @@ aliquot_sequence(
 )
 {
     PrimeFactorCache cache(cache_path);
-    IsPrime is_prime;
     std::vector<mpz_class> sequence;
     mpz_class current = n;
+    size_t index = 0;
     while (true) {
-        mpz_class sum = sum_of_divisors(current, cache, is_prime);
+        mpz_class sum = sum_of_divisors(current, cache, num_threads);
         if (sum == 0) {
             break;
         }
         if (verbose)
-            std::cout << sum << std::endl;
+            std::cout << index << ": " << sum << std::endl;
         sequence.push_back(sum);
         if (sum == current || detect_loop(sequence, sum)) {
             break;
         }
         current = sum;
+        index++;
     }
     return sequence;
 }

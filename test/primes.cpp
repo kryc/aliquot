@@ -19,17 +19,12 @@ TEST(Primes, GeneratePrimes) {
 TEST(Primes, GetPrimeGaps)
 {
     // This will trigger a fallback, so use a small limit
-    auto gaps_opt = get_prime_gaps(256ull);
-    if (gaps_opt.has_value()) {
-        auto gaps = gaps_opt.value();
-        ASSERT_FALSE(gaps.empty());
-        // Just check the first few gaps
-        EXPECT_TRUE(gaps[0] == 2);  // gap 2 (0 to 2)
-        EXPECT_TRUE(gaps[1] == 1);  // gap 1 (2 to 3)
-        EXPECT_TRUE(gaps[2] == 2);  // gap 2 (3 to 5)
-    } else {
-        GTEST_SKIP() << "No prime gaps loaded.";
-    }
+    auto gaps = get_prime_gaps(256ull);
+    ASSERT_FALSE(gaps.empty());
+    // Just check the first few gaps
+    EXPECT_TRUE(gaps[0] == 2);  // gap 2 (0 to 2)
+    EXPECT_TRUE(gaps[1] == 1);  // gap 1 (2 to 3)
+    EXPECT_TRUE(gaps[2] == 2);  // gap 2 (3 to 5)
 }
 
 TEST(Primes, PrimeFactorsSmall)
@@ -130,4 +125,100 @@ TEST(IsPrime, LargePrimes)
     for (const auto& non_prime : large_non_primes) {
         EXPECT_FALSE(is_prime.check(non_prime)) << "Failed for non-prime: " << non_prime;
     }
+}
+
+TEST(Prime, WheelGeneration210)
+{
+    auto wheel = get_wheel(210);
+    EXPECT_FALSE(wheel.empty());
+    // The wheel should start with 1 and end at 211
+    mpz_class current = 1;
+    for (auto gapword : wheel) {
+        for (size_t i = 0; i < kGapsPerWord; ++i) {
+            const uint64_t gap = gapword & kGapMask;
+            gapword >>= kBitsPerWheelGap;
+            current += gap;
+        }
+    }
+    EXPECT_EQ(current, mpz_class(211));
+}
+
+TEST(Prime, WheelGeneration2310)
+{
+    auto wheel = get_wheel(2310);
+    EXPECT_FALSE(wheel.empty());
+    // The wheel should start with 1 and end at 2311
+    mpz_class current = 1;
+    for (auto gapword : wheel) {
+        for (size_t i = 0; i < kGapsPerWord; ++i) {
+            const uint64_t gap = gapword & kGapMask;
+            gapword >>= kBitsPerWheelGap;
+            current += gap;
+        }
+    }
+    EXPECT_EQ(current, mpz_class(2311));
+}
+
+TEST(Prime, WheelGeneration510510)
+{
+    auto wheel = get_wheel(510510);
+    EXPECT_FALSE(wheel.empty());
+    // The wheel should start with 1 and end at 510511
+    mpz_class current = 1;
+    for (auto gapword : wheel) {
+        for (size_t i = 0; i < kGapsPerWord; ++i) {
+            const uint64_t gap = gapword & kGapMask;
+            gapword >>= kBitsPerWheelGap;
+            current += gap;
+        }
+    }
+    EXPECT_EQ(current, mpz_class(510511));
+}
+
+TEST(Prime, WheelGeneration30030)
+{
+    auto wheel = get_wheel(30030);
+    EXPECT_FALSE(wheel.empty());
+    // The wheel should start with 1 and end at 30031
+    mpz_class current = 1;
+    for (auto gapword : wheel) {
+        for (size_t i = 0; i < kGapsPerWord; ++i) {
+            const uint64_t gap = gapword & kGapMask;
+            gapword >>= kBitsPerWheelGap;
+            current += gap;
+        }
+    }
+    EXPECT_EQ(current, mpz_class(30031));
+}
+
+TEST(Prime, WheelGeneration9699690)
+{
+    auto wheel = get_wheel(9699690);
+    EXPECT_FALSE(wheel.empty());
+    // The wheel should start with 1 and end at 9699691
+    mpz_class current = 1;
+    for (auto gapword : wheel) {
+        for (size_t i = 0; i < kGapsPerWord; ++i) {
+            const uint64_t gap = gapword & kGapMask;
+            gapword >>= kBitsPerWheelGap;
+            current += gap;
+        }
+    }
+    EXPECT_EQ(current, mpz_class(9699691));
+}
+
+TEST(Prime, WheelGeneration223092870)
+{
+    auto wheel = get_wheel(223092870);
+    EXPECT_FALSE(wheel.empty());
+    // The wheel should start with 1 and end at 223092871
+    mpz_class current = 1;
+    for (auto gapword : wheel) {
+        for (size_t i = 0; i < kGapsPerWord; ++i) {
+            const uint64_t gap = gapword & kGapMask;
+            gapword >>= kBitsPerWheelGap;
+            current += gap;
+        }
+    }
+    EXPECT_EQ(current, mpz_class(223092871));
 }

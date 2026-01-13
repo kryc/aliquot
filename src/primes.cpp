@@ -1,7 +1,10 @@
-
+#include <array>
+#include <cinttypes>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <numeric>
 #include <optional>
 #include <span>
 #include <string_view>
@@ -16,6 +19,11 @@ static std::vector<uint8_t> gGeneratedPrimeGaps;
 static std::span<const uint8_t> gMappedPrimes;
 static std::string_view gPrimesFilename;
 static FILE* gPrimesFile = nullptr;
+
+static const std::array<uint64_t, 12> gFirstPrimes = {
+    2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37};
+
+static std::map<size_t, std::vector<uint64_t>> gWheelCache;
 
 const bool
 load_prime_gaps(
@@ -186,4 +194,81 @@ get_prime_index(
     }
 
     return index;
+}
+
+std::span<const uint64_t>
+get_primes_for_wheel_modulus(
+    const size_t modulus
+)
+{
+    std::span<const uint64_t> primes = gFirstPrimes;
+    switch(modulus)
+    {
+        case 30:
+            return primes.subspan(0, 3); // 2 - 5
+        case 210:
+            return primes.subspan(0, 4); // 2 - 7
+        case 2310:
+            return primes.subspan(0, 5); // 2 - 11
+        case 30030:
+            return primes.subspan(0, 6); // 2 - 13
+        case 510510:
+            return primes.subspan(0, 7); // 2 - 17
+        case 9699690:
+            return primes.subspan(0, 8); // 2 - 19
+        case 223092870:
+            return primes.subspan(0, 9); // 2 - 23
+        case 6469693230:
+            return primes.subspan(0, 10); // 2 - 29
+        default:
+            throw std::invalid_argument("Unsupported wheel modulus");
+    }
+}
+
+std::span<uint64_t>
+get_wheel(
+    const size_t modulus
+)
+{
+    // Check cache first
+    if (gWheelCache.find(modulus) != gWheelCache.end()) {
+        return gWheelCache[modulus];
+    }
+
+    // Generate the gaps for the wheel
+    std::vector<uint64_t> gaps;
+    uint64_t next = 0;
+    size_t count = 0;
+    uint64_t last_residue = 1;
+    for (size_t residue = 3; residue < modulus; residue+=2) {
+        if (std::gcd(residue, modulus) != 1) {
+            continue;
+        }
+        uint64_t gap = residue - last_residue;
+        if (gap > kMaxWheelGap) {
+            throw std::runtime_error("Wheel gap exceeds maximum representable size.");
+        }
+        const size_t shift = count++ * kBitsPerWheelGap;
+        next |= (gap << shift);
+        if (count == kGapsPerWord) {
+            gaps.push_back(next);
+            next = 0;
+            count = 0;
+        }
+        last_residue = residue;
+    }
+
+    // Add final gap to complete the cycle
+    const uint64_t gap = modulus - last_residue + 1;
+    if (count > 0) {
+        const size_t shift = count++ * kBitsPerWheelGap;
+        next |= (gap << shift);
+    } else {
+        next = gap;
+    }
+
+    gaps.push_back(next);
+    // Cache the result and return
+    gWheelCache[modulus] = gaps;
+    return gWheelCache[modulus];
 }
