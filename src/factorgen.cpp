@@ -37,7 +37,7 @@ generate_factors(
     }
 
     // Create the prime factor cache
-    PrimeFactorCache cache(output, true);
+    PrimeFactorCache cache(output);
 
     // Calculte the total number of products we will generate
     size_t total_products = 0;

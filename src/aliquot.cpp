@@ -18,6 +18,10 @@ sum_of_divisors(
 {
     // Get prime factors of n
     auto factors = prime_factors(n, cache);
+    // Cache the factors
+    if (cache.is_open()) {
+        cache.write(factors);
+    }
     // Convert the prime factors to a vector of composite factors
     auto composites = factors.get_composite();
     // Sum the composite factors excluding n itself

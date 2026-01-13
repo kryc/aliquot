@@ -16,25 +16,24 @@
 #include "factors.hpp"
 
 typedef struct _index_entry {
-    uint64_t product:61;
-    uint64_t num_factors:3;
+    __uint128_t product;
+    size_t num_factors;
 } IndexEntry;
 
 typedef struct _factor {
-    uint64_t value:58;
-    uint64_t count:6;
+    __uint128_t value;
+    size_t count;
 } Factor;
 
 struct FactorRecord {
-    uint64_t product;
+    __uint128_t product;
     Factor factors[0];  // Flexible array member
 };
 
 class PrimeFactorCache {
 public:
     PrimeFactorCache(
-        const std::string_view path = "",
-        const bool write = false
+        const std::string_view path = ""
     ) : cache_path(path) {
         if (cache_path.empty()) {
             return;
@@ -47,60 +46,24 @@ public:
         if (!std::filesystem::exists(get_index_path())) {
             std::filesystem::create_directories(get_index_path());
         }
-
-        if (write) {
-            // Create the index directory
-            for (size_t i = 0; i < 256; ++i) {
-                index_files[i].open(get_index_path(static_cast<uint8_t>(i)), std::ios::binary | std::ios::trunc);
-            }
-        } else {
-            // Open index files and mmap
-            for (size_t i = 0; i < 256; ++i) {
-                std::filesystem::path index_path = get_index_path(static_cast<uint8_t>(i));
-                if (!std::filesystem::exists(index_path)) {
-                    continue;
-                }
-                // Load index into memory map
-                size_t index_size = std::filesystem::file_size(index_path);
-                if (index_size == 0) {
-                    continue;  // Skip empty index files - cannot mmap them
-                }
-                FILE* index_fd = fopen(index_path.c_str(), "r");
-                if (index_fd == nullptr) {
-                    throw std::runtime_error("Failed to open index file for reading: " + index_path.string());
-                }
-                void* index_map = mmap(
-                    nullptr,
-                    index_size,
-                    PROT_READ,
-                    MAP_SHARED,
-                    fileno(index_fd),
-                    0
-                );
-                if (index_map == MAP_FAILED) {
-                    fclose(index_fd);
-                    throw std::runtime_error("Failed to mmap index file: " + index_path.string());
-                }
-                size_t num_entries = index_size / sizeof(IndexEntry);
-                lookup_index_[i] = std::span<IndexEntry>(static_cast<IndexEntry*>(index_map), num_entries);
-                index_fds_[i] = index_fd;
-            }
-            // Open factor files
-            for (size_t i = 1; i <= 6; ++i) {
-                std::filesystem::path factor_path = get_factor_path(i);
-                if (std::filesystem::exists(factor_path)) {
-                    FILE* factor_fd = fopen(factor_path.c_str(), "r");
-                    if (factor_fd == nullptr) {
-                        throw std::runtime_error("Failed to open factor file for reading: " + factor_path.string());
-                    }
-                    factor_fds_[i] = factor_fd;
-                }
-            }
-        }
     };
 
     ~PrimeFactorCache() {
         close();
+    }
+
+    const bool
+    is_open(
+        void
+    ) const {
+        return !cache_path.empty();
+    }
+
+    std::filesystem::path
+    get_path(
+        void
+    ) const {
+        return cache_path;
     }
 
     std::filesystem::path
@@ -156,35 +119,57 @@ public:
     ) {
         // Get the low bytes to find the correct index span
         uint8_t lowbyte = static_cast<uint8_t>(product & 0xFF);
-        // std::cout << "Looking in index for lowbyte: " << static_cast<uint32_t>(lowbyte) << std::endl;
+        // Check if the index exists
+        if (std::filesystem::exists(get_index_path(lowbyte)) == false) {
+            return std::nullopt;
+        }
+        // Get the file size
+        const size_t index_file_size = std::filesystem::file_size(get_index_path(lowbyte));
+        const size_t num_entries = index_file_size / sizeof(IndexEntry);
+        if (num_entries == 0) {
+            return std::nullopt;
+        }
+        // Open a handle to the index file
+        FILE* indexfd = fopen(get_index_path(lowbyte).c_str(), "r");
+        if (indexfd == nullptr) {
+            throw std::runtime_error("Failed to open index file for reading: " + get_index_path(lowbyte).string());
+        }
+
         // Binary search in the index
         ssize_t low = 0;
-        ssize_t high = static_cast<ssize_t>(lookup_index_[lowbyte].size()) - 1;
+        ssize_t high = static_cast<ssize_t>(num_entries) - 1;
         size_t num_factors = 0;
         while (low <= high) {
             ssize_t mid = low + (high - low) / 2;
-            if (lookup_index_[lowbyte][mid].product == product) {
-                num_factors = lookup_index_[lowbyte][mid].num_factors;
+            // Seek to the record position
+            if (fseek(indexfd, mid * sizeof(IndexEntry), SEEK_SET) != 0) {
+                throw std::runtime_error("Failed to seek in index file.");
+            }
+            IndexEntry entry;
+            // Read the record
+            if (fread(&entry, sizeof(IndexEntry), 1, indexfd) != 1) {
+                throw std::runtime_error("Failed to read record from index file.");
+            }
+            if (entry.product == product) {
+                num_factors = entry.num_factors;
                 break;
-            } else if (lookup_index_[lowbyte][mid].product < product) {
+            } else if (entry.product < product) {
                 low = mid + 1;
             } else {
                 high = mid - 1;
             }
         }
+        fclose(indexfd);
     
         if (num_factors == 0) {
             return std::nullopt;
         }
 
         // Read the factor record from the appropriate factor file
-        if (factor_fds_.find(num_factors) == factor_fds_.end()) {
-            std::filesystem::path factor_path = get_factor_path(num_factors);
-            FILE* factor_fd = fopen(factor_path.c_str(), "r");
-            if (factor_fd == nullptr) {
-                throw std::runtime_error("Failed to open factor file for reading: " + factor_path.string());
-            }
-            factor_fds_[num_factors] = factor_fd;
+        std::filesystem::path factor_path = get_factor_path(num_factors);
+        FILE* factor_fd = fopen(factor_path.c_str(), "r");
+        if (factor_fd == nullptr) {
+            throw std::runtime_error("Failed to open factor file for reading: " + factor_path.string());
         }
 
         // Get file size and calculate record parameters
@@ -203,12 +188,12 @@ public:
             ssize_t mid = factor_low + (factor_high - factor_low) / 2;
             
             // Seek to the record position
-            if (fseek(factor_fds_[num_factors], mid * record_size, SEEK_SET) != 0) {
+            if (fseek(factor_fd, mid * record_size, SEEK_SET) != 0) {
                 throw std::runtime_error("Failed to seek in factor file.");
             }
             
             // Read the record
-            if (fread(record_buffer.data(), record_size, 1, factor_fds_[num_factors]) != 1) {
+            if (fread(record_buffer.data(), record_size, 1, factor_fd) != 1) {
                 throw std::runtime_error("Failed to read record from factor file.");
             }
             
@@ -220,6 +205,7 @@ public:
                         factors.add_factor(prime_value);
                     }
                 }
+                fclose(factor_fd);
                 return factors;
             } else if (record->product < product) {
                 factor_low = mid + 1;
@@ -227,6 +213,7 @@ public:
                 factor_high = mid - 1;
             }
         }
+        fclose(factor_fd);
         return std::nullopt;
     }
 
@@ -236,18 +223,21 @@ public:
         const size_t num_factors = factors.size();
         const uint64_t product = factors.product64();
         const uint8_t lowbyte = static_cast<uint8_t>(product & 0xFF);
-        // Write to index file
-        if (index_files[lowbyte].is_open()) {
-            IndexEntry entry;
-            entry.product = product;
-            entry.num_factors = static_cast<uint8_t>(num_factors);
-            index_files[lowbyte].write(reinterpret_cast<const char*>(&entry), sizeof(IndexEntry));
+        // Open a handle to the index file
+        FILE* indexfd = fopen(get_index_path(lowbyte).c_str(), "a");
+        if (indexfd == nullptr) {
+            throw std::runtime_error("Failed to open index file for writing: " + get_index_path(lowbyte).string());
         }
-
-        // Write to factor file
-        if (factor_files.find(num_factors) == factor_files.end()) {
-            factor_files[num_factors].open(get_factor_path(num_factors), std::ios::binary | std::ios::trunc);
+        // Write the index entry
+        IndexEntry entry;
+        entry.product = product;
+        entry.num_factors = static_cast<uint8_t>(num_factors);
+        if (fwrite(&entry, sizeof(IndexEntry), 1, indexfd) != 1) {
+            throw std::runtime_error("Failed to write index entry.");
         }
+        fclose(indexfd);
+        // Sort this index file
+        sort_index(lowbyte);
         
         // Allocate buffer for FactorRecord with flexible array member
         const size_t record_size = sizeof(FactorRecord) + num_factors * sizeof(Factor);
@@ -262,65 +252,85 @@ public:
             i++;
         }
         
-        factor_files[num_factors].write(buffer.data(), record_size);
+        // Write to the appropriate factor file
+        std::filesystem::path factor_path = get_factor_path(num_factors);
+        FILE* factor_fd = fopen(factor_path.c_str(), "a");
+        if (factor_fd == nullptr) {
+            throw std::runtime_error("Failed to open factor file for writing: " + factor_path.string());
+        }
+        if (fwrite(buffer.data(), record_size, 1, factor_fd) != 1) {
+            throw std::runtime_error("Failed to write factor record.");
+        }
+        fclose(factor_fd);
+        // Sort this factor file
+        sort_factors(num_factors);
     }
 
     void close(
         void
-    ) {
-        for (size_t i = 0; i < 256; ++i) {
-            if (!lookup_index_[i].empty()) {
-                munmap(lookup_index_[i].data(), lookup_index_[i].size() * sizeof(IndexEntry));
-                fclose(index_fds_[i]);
-            }
-        }
-        factor_fds_.clear();
+    ) {}
 
-        for (auto& [num_factors, file] : factor_files) {
-            if (file.is_open()) {
-                file.close();
-            }
+    bool sort_index(
+        const size_t lowbyte
+    ) const {
+        std::filesystem::path index_path = get_index_path(static_cast<uint8_t>(lowbyte));
+        if (!std::filesystem::exists(index_path)) {
+            return false;
         }
+        size_t file_size = std::filesystem::file_size(index_path);
+        if (file_size == 0) {
+            return false;  // Skip empty index files
+        }
+        // Open and mmap the index file
+        FILE* fd = fopen(index_path.c_str(), "r+");
+        if (fd == nullptr) {
+            std::cerr << "Failed to open index file for sorting." << std::endl;
+            return false;
+        }
+        void* map = mmap(nullptr, file_size, PROT_READ | PROT_WRITE, MAP_SHARED, fileno(fd), 0);
+        if (map == MAP_FAILED) {
+            std::cerr << "Failed to mmap index file for sorting." << std::endl;
+            fclose(fd);
+            return false;
+        }
+        size_t num_entries = file_size / sizeof(IndexEntry);
+        std::span<IndexEntry> entries(static_cast<IndexEntry*>(map), num_entries);
+        // Sort the entries by product
+        std::sort(entries.begin(), entries.end(), [](const IndexEntry& a, const IndexEntry& b) {
+            return a.product < b.product;
+        });
+        // Sync changes to disk
+        msync(map, file_size, MS_SYNC);
+        // Unmap and close the file
+        munmap(map, file_size);
+        fclose(fd);
+        return true;
     }
 
-    void sort(
-        void
-    ) {
-        // Sort index files
-        for (size_t i = 0; i < 256; ++i) {
-            if (!std::filesystem::exists(get_index_path(i))) {
-                continue;
-            }
-            std::filesystem::path index_path = get_index_path(static_cast<uint8_t>(i));
-            size_t file_size = std::filesystem::file_size(get_index_path(static_cast<uint8_t>(i)));
-            if (file_size == 0) {
-                continue;  // Skip empty index files
-            }
-            // Open and mmap the index file
-            FILE* fd = fopen(index_path.c_str(), "r+");
-            if (fd == nullptr) {
-                std::cerr << "Failed to open index file for sorting." << std::endl;
-                return;
-            }
-            void* map = mmap(nullptr, file_size, PROT_READ | PROT_WRITE, MAP_SHARED, fileno(fd), 0);
-            if (map == MAP_FAILED) {
-                std::cerr << "Failed to mmap index file for sorting." << std::endl;
-                fclose(fd);
-                return;
-            }
-            size_t num_entries = file_size / sizeof(IndexEntry);
-            std::span<IndexEntry> entries(static_cast<IndexEntry*>(map), num_entries);
-            // Sort the entries by product
-            std::sort(entries.begin(), entries.end(), [](const IndexEntry& a, const IndexEntry& b) {
-                return a.product < b.product;
-            });
-            // Sync changes to disk
-            msync(map, file_size, MS_SYNC);
-            // Unmap and close the file
-            munmap(map, file_size);
-            fclose(fd);
+    bool sort_factors(
+        const size_t num_factors
+    ) const {
+        std::filesystem::path factor_path = get_factor_path(num_factors);
+        if (!std::filesystem::exists(factor_path)) {
+            return false;
         }
-
+        // Open and mmap the factor file
+        FILE* ffd = fopen(factor_path.c_str(), "r+");
+        if (ffd == nullptr) {
+            std::cerr << "Failed to open factor file for sorting: " << factor_path << std::endl;
+            return false;
+        }
+        size_t factor_file_size = std::filesystem::file_size(factor_path);
+        void* fmap = mmap(nullptr, factor_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, fileno(ffd), 0);
+        if (fmap == MAP_FAILED) {
+            std::cerr << "Failed to mmap factor file for sorting: " << factor_path << std::endl;
+            fclose(ffd);
+            return false;
+        }
+        
+        const size_t record_size = sizeof(FactorRecord) + num_factors * sizeof(Factor);
+        size_t num_records = factor_file_size / record_size;
+        
         // Comparison function for qsort_r
         auto compare_records = [](const void* a, const void* b, void* arg) -> int {
             const FactorRecord* rec_a = static_cast<const FactorRecord*>(a);
@@ -329,37 +339,28 @@ public:
             if (rec_a->product > rec_b->product) return 1;
             return 0;
         };
+        
+        // Sort in-place using qsort_r
+        qsort_r(fmap, num_records, record_size, compare_records, nullptr);
+        
+        // Sync changes to disk
+        msync(fmap, factor_file_size, MS_SYNC);
+        // Unmap and close the file
+        munmap(fmap, factor_file_size);
+        fclose(ffd);
+        return true;
+    }
+
+    void sort(
+        void
+    ) {
+        // Sort index files
+        for (size_t i = 0; i < 256; ++i) {
+            sort_index(i);
+        }
 
         for (size_t num_factors = 1; num_factors <= 6; ++num_factors) {
-            std::filesystem::path factor_path = get_factor_path(num_factors);
-            if (!std::filesystem::exists(factor_path)) {
-                continue;
-            }
-            // Open and mmap the factor file
-            FILE* ffd = fopen(factor_path.c_str(), "r+");
-            if (ffd == nullptr) {
-                std::cerr << "Failed to open factor file for sorting: " << factor_path << std::endl;
-                continue;
-            }
-            size_t factor_file_size = std::filesystem::file_size(factor_path);
-            void* fmap = mmap(nullptr, factor_file_size, PROT_READ | PROT_WRITE, MAP_SHARED, fileno(ffd), 0);
-            if (fmap == MAP_FAILED) {
-                std::cerr << "Failed to mmap factor file for sorting: " << factor_path << std::endl;
-                fclose(ffd);
-                continue;
-            }
-            
-            const size_t record_size = sizeof(FactorRecord) + num_factors * sizeof(Factor);
-            size_t num_records = factor_file_size / record_size;
-            
-            // Sort in-place using qsort_r
-            qsort_r(fmap, num_records, record_size, compare_records, nullptr);
-            
-            // Sync changes to disk
-            msync(fmap, factor_file_size, MS_SYNC);
-            // Unmap and close the file
-            munmap(fmap, factor_file_size);
-            fclose(ffd);
+            sort_factors(num_factors);
         }
     }
 
@@ -389,10 +390,4 @@ public:
     }
 private:
     std::filesystem::path cache_path;
-    std::array<std::ofstream, 256> index_files;
-    std::array<std::span<IndexEntry>, 256> lookup_index_;
-    std::array<FILE*, 256> index_fds_;
-    
-    std::map<size_t, std::ofstream> factor_files;
-    std::map<size_t, FILE*> factor_fds_;
 };
