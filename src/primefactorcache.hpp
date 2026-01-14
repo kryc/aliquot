@@ -18,51 +18,51 @@
 template<size_t N = 1024> 
 struct BigNum {
     uint64_t value[N/64]; // Support up to 512-bit products
-    void operator=(const mpz_class& val) {
+    void operator=(const mpz_class& Val) {
         std::memset(value, 0, sizeof(value));
-        mpz_export(value, nullptr, -1, sizeof(uint64_t), 0, 0, val.get_mpz_t());
+        mpz_export(value, nullptr, -1, sizeof(uint64_t), 0, 0, Val.get_mpz_t());
     }
-    void operator=(const BigNum<N>& other) {
-        std::memcpy(value, other.value, sizeof(value));
+    void operator=(const BigNum<N>& Other) {
+        std::memcpy(value, Other.value, sizeof(value));
     }
-    mpz_class to_mpz(void) const {
+    mpz_class ToMPZ(void) const {
         mpz_class result;
         mpz_import(result.get_mpz_t(), N/64, -1, sizeof(uint64_t), 0, 0, value);
         return result;
     }
-    bool operator<(const BigNum<N>& other) const {
+    bool operator<(const BigNum<N>& Other) const {
         for (int i = (N-1)/64; i >= 0; --i) {
-            if (value[i] < other.value[i]) return true;
-            if (value[i] > other.value[i]) return false;
+            if (value[i] < Other.value[i]) return true;
+            if (value[i] > Other.value[i]) return false;
         }
         return false;
     }
-    bool operator<(const mpz_class& other) const {
+    bool operator<(const mpz_class& Other) const {
         BigNum<N> temp;
-        temp = other;
+        temp = Other;
         return *this < temp;
     }
-    bool operator>(const BigNum<N>& other) const {
+    bool operator>(const BigNum<N>& Other) const {
         for (int i = (N-1)/64; i >= 0; --i) {
-            if (value[i] > other.value[i]) return true;
-            if (value[i] < other.value[i]) return false;
+            if (value[i] > Other.value[i]) return true;
+            if (value[i] < Other.value[i]) return false;
         }
         return false;
     }
-    bool operator>(const mpz_class& other) const {
+    bool operator>(const mpz_class& Other) const {
         BigNum<N> temp;
-        temp = other;
+        temp = Other;
         return *this > temp;
     }
-    bool operator==(const BigNum<N>& other) const {
+    bool operator==(const BigNum<N>& Other) const {
         for (int i = 0; i < N/64; ++i) {
-            if (value[i] != other.value[i]) return false;
+            if (value[i] != Other.value[i]) return false;
         }
         return true;
     }
-    bool operator==(const mpz_class& other) const {
+    bool operator==(const mpz_class& Other) const {
         BigNum<N> temp;
-        temp = other;
+        temp = Other;
         return *this == temp;
     }
 };
@@ -90,105 +90,105 @@ class PrimeFactorCache {
 public:
     PrimeFactorCache(
         const std::string_view path = ""
-    ) : cache_path(path) {
-        if (cache_path.empty()) {
+    ) : m_CachePath(path) {
+        if (m_CachePath.empty()) {
             return;
         }
 
-        if (!std::filesystem::exists(cache_path)) {
-            std::filesystem::create_directories(cache_path);
+        if (!std::filesystem::exists(m_CachePath)) {
+            std::filesystem::create_directories(m_CachePath);
         }
 
-        if (!std::filesystem::exists(get_index_path())) {
-            std::filesystem::create_directories(get_index_path());
+        if (!std::filesystem::exists(GetIndexPath())) {
+            std::filesystem::create_directories(GetIndexPath());
         }
     };
 
     ~PrimeFactorCache() {
-        close();
+        Close();
     }
 
     const bool
-    is_open(
+    IsOpen(
         void
     ) const {
-        return !cache_path.empty();
+        return !m_CachePath.empty();
     }
 
     std::filesystem::path
-    get_path(
+    GetPath(
         void
     ) const {
-        return cache_path;
+        return m_CachePath;
     }
 
     std::filesystem::path
-    get_index_path(
+    GetIndexPath(
         void
     ) const {
-        return cache_path / "index";
+        return m_CachePath / "index";
     }
 
     std::filesystem::path
-    get_index_path(
-        const uint8_t lowbyte
+    GetIndexPath(
+        const uint8_t LowByte
     ) const {
-        return cache_path / "index" / (std::to_string(lowbyte) + ".idx");
+        return m_CachePath / "index" / (std::to_string(LowByte) + ".idx");
     }
 
     std::filesystem::path
-    get_factor_path(
-        const size_t num_factors
+    GetFactorPath(
+        const size_t NumFactors
     ) const {
-        return cache_path / ("factors_" + std::to_string(num_factors) + ".dat");
+        return m_CachePath / ("factors_" + std::to_string(NumFactors) + ".dat");
     }
 
     std::filesystem::path
-    get_info_path(
+    GetInfoPath(
         void
     ) const {
-        return cache_path / "info.txt";
+        return m_CachePath / "info.txt";
     }
 
     void
-    write_info(
-        const size_t min_prime,
-        const size_t max_prime,
-        const size_t min_factors,
-        const size_t max_factors,
-        const size_t smallest_factor
+    WriteInfo(
+        const size_t MinPrime,
+        const size_t MaxPrime,
+        const size_t MinFactors,
+        const size_t MaxFactors,
+        const size_t SmallestFactor
     ) const {
-        std::ofstream info_file(get_info_path(), std::ios::trunc);
+        std::ofstream info_file(GetInfoPath(), std::ios::trunc);
         if (info_file.is_open()) {
-            info_file << "min_prime=" << min_prime << "\n";
-            info_file << "max_prime=" << max_prime << "\n";
-            info_file << "min_factors=" << min_factors << "\n";
-            info_file << "max_factors=" << max_factors << "\n";
-            info_file << "smallest_factor=" << smallest_factor << "\n";
+            info_file << "MinPrime=" << MinPrime << "\n";
+            info_file << "MaxPrime=" << MaxPrime << "\n";
+            info_file << "MinFactors=" << MinFactors << "\n";
+            info_file << "MaxFactors=" << MaxFactors << "\n";
+            info_file << "SmallestFactor=" << SmallestFactor << "\n";
             info_file.close();
         }
     }
 
     std::optional<PrimeFactors>
-    product_exists(
-        const mpz_class& product
+    ProductExists(
+        const mpz_class& Product
     ) {
         // Get the low bytes to find the correct index span
-        uint8_t lowbyte = static_cast<uint8_t>(product.get_ui() & 0xFF);
+        uint8_t LowByte = static_cast<uint8_t>(Product.get_ui() & 0xFF);
         // Check if the index exists
-        if (std::filesystem::exists(get_index_path(lowbyte)) == false) {
+        if (std::filesystem::exists(GetIndexPath(LowByte)) == false) {
             return std::nullopt;
         }
         // Get the file size
-        const size_t index_file_size = std::filesystem::file_size(get_index_path(lowbyte));
+        const size_t index_file_size = std::filesystem::file_size(GetIndexPath(LowByte));
         const size_t num_entries = index_file_size / sizeof(IndexEntry<N>);
         if (num_entries == 0) {
             return std::nullopt;
         }
         // Open a handle to the index file
-        FILE* indexfd = fopen(get_index_path(lowbyte).c_str(), "r");
+        FILE* indexfd = fopen(GetIndexPath(LowByte).c_str(), "r");
         if (indexfd == nullptr) {
-            throw std::runtime_error("Failed to open index file for reading: " + get_index_path(lowbyte).string());
+            throw std::runtime_error("Failed to open index file for reading: " + GetIndexPath(LowByte).string());
         }
 
         // Binary search in the index
@@ -206,10 +206,10 @@ public:
             if (fread(&entry, sizeof(IndexEntry<N>), 1, indexfd) != 1) {
                 throw std::runtime_error("Failed to read record from index file.");
             }
-            if (entry.product == product) {
+            if (entry.product == Product) {
                 num_factors = entry.num_factors;
                 break;
-            } else if (entry.product < product) {
+            } else if (entry.product < Product) {
                 low = mid + 1;
             } else {
                 high = mid - 1;
@@ -222,14 +222,14 @@ public:
         }
 
         // Read the factor record from the appropriate factor file
-        std::filesystem::path factor_path = get_factor_path(num_factors);
+        std::filesystem::path factor_path = GetFactorPath(num_factors);
         FILE* factor_fd = fopen(factor_path.c_str(), "r");
         if (factor_fd == nullptr) {
             throw std::runtime_error("Failed to open factor file for reading: " + factor_path.string());
         }
 
         // Get file size and calculate record parameters
-        const size_t factor_file_size = std::filesystem::file_size(get_factor_path(num_factors));
+        const size_t factor_file_size = std::filesystem::file_size(GetFactorPath(num_factors));
         const size_t record_size = sizeof(FactorRecord<N>) + num_factors * sizeof(Factor<N>);
         size_t num_records = factor_file_size / record_size;
         
@@ -253,17 +253,17 @@ public:
                 throw std::runtime_error("Failed to read record from factor file.");
             }
             
-            if (record->product == product) {
+            if (record->product == Product) {
                 PrimeFactors factors;
                 for (size_t i = 0; i < num_factors; ++i) {
-                    mpz_class prime_value = record->factors[i].value.to_mpz();
+                    mpz_class prime_value = record->factors[i].value.ToMPZ();
                     for (size_t j = 0; j < record->factors[i].count; ++j) {
-                        factors.add_factor(prime_value);
+                        factors.AddFactor(prime_value);
                     }
                 }
                 fclose(factor_fd);
                 return factors;
-            } else if (record->product < product) {
+            } else if (record->product < Product) {
                 factor_low = mid + 1;
             } else {
                 factor_high = mid - 1;
@@ -273,16 +273,16 @@ public:
         return std::nullopt;
     }
 
-    void write(
-        const PrimeFactors factors
+    void Write(
+        const PrimeFactors Factors
     ) {
-        const size_t num_factors = factors.size();
-        const uint64_t product = factors.product64();
-        const uint8_t lowbyte = static_cast<uint8_t>(product & 0xFF);
+        const size_t num_factors = Factors.Size();
+        const uint64_t product = Factors.Product64();
+        const uint8_t LowByte = static_cast<uint8_t>(product & 0xFF);
         // Open a handle to the index file
-        FILE* indexfd = fopen(get_index_path(lowbyte).c_str(), "a");
+        FILE* indexfd = fopen(GetIndexPath(LowByte).c_str(), "a");
         if (indexfd == nullptr) {
-            throw std::runtime_error("Failed to open index file for writing: " + get_index_path(lowbyte).string());
+            throw std::runtime_error("Failed to open index file for writing: " + GetIndexPath(LowByte).string());
         }
         // Write the index entry
         IndexEntry<N> entry;
@@ -293,7 +293,7 @@ public:
         }
         fclose(indexfd);
         // Sort this index file
-        sort_index(lowbyte);
+        SortIndex(LowByte);
         
         // Allocate buffer for FactorRecord with flexible array member
         const size_t record_size = sizeof(FactorRecord<N>) + num_factors * sizeof(Factor<N>);
@@ -302,14 +302,14 @@ public:
         
         record->product = product;
         size_t i = 0;
-        for (const auto& [prime, count] : factors.to_vector()) {
+        for (const auto& [prime, count] : Factors.ToVector()) {
             record->factors[i].value = prime;
             record->factors[i].count = static_cast<uint8_t>(count);
             i++;
         }
         
         // Write to the appropriate factor file
-        std::filesystem::path factor_path = get_factor_path(num_factors);
+        std::filesystem::path factor_path = GetFactorPath(num_factors);
         FILE* factor_fd = fopen(factor_path.c_str(), "a");
         if (factor_fd == nullptr) {
             throw std::runtime_error("Failed to open factor file for writing: " + factor_path.string());
@@ -319,17 +319,17 @@ public:
         }
         fclose(factor_fd);
         // Sort this factor file
-        sort_factors(num_factors);
+        SortFactors(num_factors);
     }
 
-    void close(
+    void Close(
         void
     ) {}
 
-    bool sort_index(
-        const size_t lowbyte
+    bool SortIndex(
+        const size_t LowByte
     ) const {
-        std::filesystem::path index_path = get_index_path(static_cast<uint8_t>(lowbyte));
+        std::filesystem::path index_path = GetIndexPath(static_cast<uint8_t>(LowByte));
         if (!std::filesystem::exists(index_path)) {
             return false;
         }
@@ -363,10 +363,10 @@ public:
         return true;
     }
 
-    bool sort_factors(
-        const size_t num_factors
+    bool SortFactors(
+        const size_t NumFactors
     ) const {
-        std::filesystem::path factor_path = get_factor_path(num_factors);
+        std::filesystem::path factor_path = GetFactorPath(NumFactors);
         if (!std::filesystem::exists(factor_path)) {
             return false;
         }
@@ -384,7 +384,7 @@ public:
             return false;
         }
         
-        const size_t record_size = sizeof(FactorRecord<N>) + num_factors * sizeof(Factor<N>);
+        const size_t record_size = sizeof(FactorRecord<N>) + NumFactors * sizeof(Factor<N>);
         size_t num_records = factor_file_size / record_size;
         
         // Comparison function for qsort_r
@@ -407,35 +407,35 @@ public:
         return true;
     }
 
-    void sort(
+    void Sort(
         void
     ) {
         // Sort index files
         for (size_t i = 0; i < 256; ++i) {
-            sort_index(i);
+            SortIndex(i);
         }
 
         for (size_t num_factors = 1; num_factors <= 6; ++num_factors) {
-            sort_factors(num_factors);
+            SortFactors(num_factors);
         }
     }
 
-    void print_stats(
+    void PrintStats(
         void
     ) const {
         std::cout << "Prime Factor Cache Stats:" << std::endl;
-        std::cout << "Cache Path: " << cache_path << std::endl;
+        std::cout << "Cache Path: " << m_CachePath << std::endl;
         // Get number of entries in the index file
         size_t index_size = 0;
         for (size_t i = 0; i < 256; ++i) {
-            if (std::filesystem::exists(get_index_path(i))) {
-                index_size = std::filesystem::file_size(get_index_path(i));
+            if (std::filesystem::exists(GetIndexPath(i))) {
+                index_size = std::filesystem::file_size(GetIndexPath(i));
                 index_size = index_size / sizeof(IndexEntry<N>);
             }
         }
         std::cout << "Entries: " << index_size << std::endl;
         for (size_t i = 1; i <= 6; ++i) {
-            std::filesystem::path factor_path = get_factor_path(i);
+            std::filesystem::path factor_path = GetFactorPath(i);
             if (std::filesystem::exists(factor_path)) {
                 size_t factor_size = std::filesystem::file_size(factor_path);
                 size_t record_size = sizeof(FactorRecord<N>) + i * sizeof(Factor<N>);
@@ -445,5 +445,5 @@ public:
         }
     }
 private:
-    std::filesystem::path cache_path;
+    std::filesystem::path m_CachePath;
 };

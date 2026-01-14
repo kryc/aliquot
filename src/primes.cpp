@@ -26,8 +26,8 @@ static const std::array<uint64_t, 12> gFirstPrimes = {
 static std::map<size_t, std::vector<uint64_t>> gWheelCache;
 
 const bool
-load_prime_gaps(
-    std::string_view filename
+LoadPrimeGaps(
+    std::string_view Filename
 )
 {
     if (gMappedPrimes.data() != nullptr) {
@@ -43,8 +43,8 @@ load_prime_gaps(
     }
 
     // Mmap the file
-    const size_t size = std::filesystem::file_size(filename);
-    FILE* file = std::fopen(filename.data(), "rb");
+    const size_t size = std::filesystem::file_size(Filename);
+    FILE* file = std::fopen(Filename.data(), "rb");
     if (!file) {
         return false;
     }
@@ -64,19 +64,19 @@ load_prime_gaps(
         return false;
     }
     gMappedPrimes = std::span<const uint8_t>(base, size);
-    gPrimesFilename = filename;
+    gPrimesFilename = Filename;
     gPrimesFile = file;
     return true;
 }
 
 std::vector<uint8_t>
-generate_prime_gaps(
-    const mpz_class& limit,
-    const bool is_count
+GeneratePrimeGaps(
+    const mpz_class& Limit,
+    const bool IsCount
 )
 {
     std::vector<uint8_t> gaps;
-    if (limit < 3) {
+    if (Limit < 3) {
         return gaps;
     }
 
@@ -85,8 +85,8 @@ generate_prime_gaps(
     mpz_class next = 2;
     mpz_class previous = 0;
     size_t count = 0;
-    while ((count && count < limit) ||
-        (!count && next <= limit)) {
+    while ((count && count < Limit) ||
+        (!count && next <= Limit)) {
         mpz_class gap = next - previous;
         previous = next;
         // VLE encode the gap
@@ -105,12 +105,12 @@ generate_prime_gaps(
 }
 
 std::span<const uint8_t>
-get_prime_gaps(
-    const uint64_t fallback_limit
+GetPrimeGaps(
+    const uint64_t FallbackLimit
 )
 {
     if (gMappedPrimes.empty() && gPrimesFilename.empty()) {
-        gGeneratedPrimeGaps = generate_prime_gaps(fallback_limit, false);
+        gGeneratedPrimeGaps = GeneratePrimeGaps(FallbackLimit, false);
         return gGeneratedPrimeGaps;
     } else if (gMappedPrimes.empty()) {
         // Failed to mmap the file
@@ -120,21 +120,21 @@ get_prime_gaps(
 }
 
 mpz_class
-get_nth_prime(
-    const size_t n
+GetNthPrime(
+    const size_t N
 )
 {
-    if (n == 0) {
+    if (N == 0) {
         return 2;
     }
     
-    const auto& gaps = get_prime_gaps();
+    const auto& gaps = GetPrimeGaps();
 
     mpz_class prime = 2;
     size_t gap_index = 1; // Start after the first gap which is for prime 2
     size_t count = 0;
 
-    while (count < n && gap_index < gaps.size()) {
+    while (count < N && gap_index < gaps.size()) {
         // Get the next VLE-encoded gap
         uint64_t gap = 0;
         uint8_t shift = 0;
@@ -150,10 +150,10 @@ get_nth_prime(
     }
 
     // Continue with fallback to mpz_nextprime if needed
-    // if (count < n) {
-    //     std::cout << "Continuing to find prime " << n << " using mpz_nextprime. Currently at " << prime << std::endl;
+    // if (count < N) {
+    //     std::cout << "Continuing to find prime " << N << " using mpz_nextprime. Currently at " << prime << std::endl;
     // }
-    while (count < n) {
+    while (count < N) {
         mpz_nextprime(prime.get_mpz_t(), prime.get_mpz_t());
         count++;
     }
@@ -162,17 +162,17 @@ get_nth_prime(
 }
 
 size_t
-get_prime_index(
-    const mpz_class& prime
+GetPrimeIndex(
+    const mpz_class& Prime
 )
 {
-    const auto gaps = get_prime_gaps();
+    const auto gaps = GetPrimeGaps();
 
     mpz_class current_prime = 2;
     size_t gap_index = 1; // Start after the first gap which is for prime 2
     size_t index = 0;
 
-    while (current_prime < prime && gap_index < gaps.size()) {
+    while (current_prime < Prime && gap_index < gaps.size()) {
         // Get the next VLE-encoded gap
         uint64_t gap = 0;
         uint8_t shift = 0;
@@ -188,7 +188,7 @@ get_prime_index(
     }
 
     // Fallback using mpz_nextprime
-    while (current_prime < prime) {
+    while (current_prime < Prime) {
         mpz_nextprime(current_prime.get_mpz_t(), current_prime.get_mpz_t());
         index++;
     }
@@ -197,12 +197,12 @@ get_prime_index(
 }
 
 std::span<const uint64_t>
-get_primes_for_wheel_modulus(
-    const size_t modulus
+GetPrimesForWheelModulus(
+    const size_t Modulus
 )
 {
     std::span<const uint64_t> primes = gFirstPrimes;
-    switch(modulus)
+    switch(Modulus)
     {
         case 30:
             return primes.subspan(0, 3); // 2 - 5
@@ -221,18 +221,18 @@ get_primes_for_wheel_modulus(
         case 6469693230:
             return primes.subspan(0, 10); // 2 - 29
         default:
-            throw std::invalid_argument("Unsupported wheel modulus");
+            throw std::invalid_argument("Unsupported wheel Modulus");
     }
 }
 
-std::span<uint64_t>
-get_wheel(
-    const size_t modulus
+std::span<const uint64_t>
+GetWheel(
+    const size_t Modulus
 )
 {
     // Check cache first
-    if (gWheelCache.find(modulus) != gWheelCache.end()) {
-        return gWheelCache[modulus];
+    if (gWheelCache.find(Modulus) != gWheelCache.end()) {
+        return gWheelCache[Modulus];
     }
 
     // Generate the gaps for the wheel
@@ -240,8 +240,8 @@ get_wheel(
     uint64_t next = 0;
     size_t count = 0;
     uint64_t last_residue = 1;
-    for (size_t residue = 3; residue < modulus; residue+=2) {
-        if (std::gcd(residue, modulus) != 1) {
+    for (size_t residue = 3; residue < Modulus; residue+=2) {
+        if (std::gcd(residue, Modulus) != 1) {
             continue;
         }
         uint64_t gap = residue - last_residue;
@@ -259,7 +259,7 @@ get_wheel(
     }
 
     // Add final gap to complete the cycle
-    const uint64_t gap = modulus - last_residue + 1;
+    const uint64_t gap = Modulus - last_residue + 1;
     if (count > 0) {
         const size_t shift = count++ * kBitsPerWheelGap;
         next |= (gap << shift);
@@ -269,6 +269,6 @@ get_wheel(
 
     gaps.push_back(next);
     // Cache the result and return
-    gWheelCache[modulus] = gaps;
-    return gWheelCache[modulus];
+    gWheelCache[Modulus] = gaps;
+    return gWheelCache[Modulus];
 }

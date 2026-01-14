@@ -6,11 +6,11 @@
 TEST(Factors, Composite)
 {
     PrimeFactors factors;
-    factors.add_factor(2);
-    factors.add_factor(2);
-    factors.add_factor(3);
-    factors.add_factor(5);
-    auto composites = factors.get_composite(true);
+    factors.AddFactor(2);
+    factors.AddFactor(2);
+    factors.AddFactor(3);
+    factors.AddFactor(5);
+    auto composites = factors.GetComposite(true);
     // The composites of 2^2 * 3^1 * 5^1 are:
     // 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60
     std::vector<mpz_class> expected = {
@@ -26,14 +26,14 @@ TEST(Factors, CompositeManyFactors)
 {
     PrimeFactors factors;
     // Building 2^3 * 3^2 * 5 * 7 = 2520
-    factors.add_factor(2);
-    factors.add_factor(2);
-    factors.add_factor(2);
-    factors.add_factor(3);
-    factors.add_factor(3);
-    factors.add_factor(5);
-    factors.add_factor(7);
-    auto composites = factors.get_composite(true);
+    factors.AddFactor(2);
+    factors.AddFactor(2);
+    factors.AddFactor(2);
+    factors.AddFactor(3);
+    factors.AddFactor(3);
+    factors.AddFactor(5);
+    factors.AddFactor(7);
+    auto composites = factors.GetComposite(true);
     
     // 2520 has (3+1)(2+1)(1+1)(1+1) = 48 divisors
     std::vector<mpz_class> expected = {
@@ -57,10 +57,10 @@ TEST(Factors, CompositeLargePrimes)
     mpz_class p1(1048583);  // First prime after 2^20
     mpz_class p2(1048589);  // Second prime after 2^20
     
-    factors.add_factor(p1);
-    factors.add_factor(p1);
-    factors.add_factor(p2);
-    auto composites = factors.get_composite(true);
+    factors.AddFactor(p1);
+    factors.AddFactor(p1);
+    factors.AddFactor(p2);
+    auto composites = factors.GetComposite(true);
     
     // Should have (2+1)(1+1) = 6 divisors
     std::vector<mpz_class> expected = {
@@ -80,7 +80,7 @@ TEST(Factors, CompositeLargePrimes)
 TEST(Factors, CompositeEmpty)
 {
     PrimeFactors factors;
-    auto composites = factors.get_composite();
+    auto composites = factors.GetComposite();
     // The only composite of an empty factorization is 1
     ASSERT_EQ(composites.size(), 1);
     EXPECT_EQ(composites[0], 1);
@@ -89,8 +89,8 @@ TEST(Factors, CompositeEmpty)
 TEST(Factors, CompositeSinglePrime)
 {
     PrimeFactors factors;
-    factors.add_factor(7);
-    auto composites = factors.get_composite();
+    factors.AddFactor(7);
+    auto composites = factors.GetComposite();
     // The composites of 7^1 are: 1, 7
     std::vector<mpz_class> expected = {1, 7};
     ASSERT_EQ(composites.size(), expected.size());
@@ -102,10 +102,10 @@ TEST(Factors, CompositeSinglePrime)
 TEST(Factors, CompositeSinglePrimeMultiple)
 {
     PrimeFactors factors;
-    factors.add_factor(11);
-    factors.add_factor(11);
-    factors.add_factor(11);
-    auto composites = factors.get_composite(true);
+    factors.AddFactor(11);
+    factors.AddFactor(11);
+    factors.AddFactor(11);
+    auto composites = factors.GetComposite(true);
     // The composites of 11^3 are: 1, 11, 121, 1331
     std::vector<mpz_class> expected = {1, 11, 121, 1331};
     ASSERT_EQ(composites.size(), expected.size());
@@ -117,10 +117,10 @@ TEST(Factors, CompositeSinglePrimeMultiple)
 TEST(Factors, Product)
 {
     PrimeFactors factors;
-    factors.add_factor(2);
-    factors.add_factor(2);
-    factors.add_factor(3);
-    factors.add_factor(5);
-    mpz_class prod = factors.product();
+    factors.AddFactor(2);
+    factors.AddFactor(2);
+    factors.AddFactor(3);
+    factors.AddFactor(5);
+    mpz_class prod = factors.Product();
     EXPECT_EQ(prod, 60); // 2^2 * 3^1 * 5^1 = 60
 }

@@ -10,24 +10,24 @@
 #include "primes.hpp"
 
 mpz_class
-sum_of_divisors(
-    const mpz_class& n,
-    PrimeFactorCache<>& cache,
-    const size_t num_threads
+SumOfDivisors(
+    const mpz_class& N,
+    PrimeFactorCache<>& Cache,
+    const size_t NumThreads
 )
 {
-    // Get prime factors of n
-    auto factors = prime_factors(n, cache);
+    // Get prime factors of N
+    auto factors = GetPrimeFactors(N, Cache);
     // Cache the factors
-    if (cache.is_open()) {
-        cache.write(factors);
+    if (Cache.IsOpen()) {
+        Cache.Write(factors);
     }
     // Convert the prime factors to a vector of composite factors
-    auto composites = factors.get_composite();
+    auto composites = factors.GetComposite();
     // Sum the composite factors excluding n itself
     mpz_class sum = 0;
     for (const auto& comp : composites) {
-        if (comp != n) {
+        if (comp != N) {
             sum += comp;
         }
     }
@@ -35,22 +35,22 @@ sum_of_divisors(
 }
 
 mpz_class
-sum_of_divisors(
-    const mpz_class& n
+SumOfDivisors(
+    const mpz_class& N
 )
 {
     PrimeFactorCache<> cache;
-    return sum_of_divisors(n, cache, std::thread::hardware_concurrency());
+    return SumOfDivisors(N, cache, std::thread::hardware_concurrency());
 }
 
 const bool
-detect_loop(
-    const std::span<const mpz_class> sequence,
-    const mpz_class& next_value
+DetectLoop(
+    const std::span<const mpz_class> Sequence,
+    const mpz_class& NextValue
 )
 {
-    for (const auto& value : sequence.subspan(0, sequence.size() - 1)) {
-        if (value == next_value) {
+    for (const auto& value : Sequence.subspan(0, Sequence.size() - 1)) {
+        if (value == NextValue) {
             return true;
         }
     }
@@ -58,26 +58,26 @@ detect_loop(
 }
 
 std::vector<mpz_class>
-aliquot_sequence(
-    const mpz_class& n,
-    const std::string_view cache_path,
-    const bool verbose,
-    const size_t num_threads
+AliquotSequence(
+    const mpz_class& N,
+    const std::string_view CachePath,
+    const bool Verbose,
+    const size_t NumThreads
 )
 {
-    PrimeFactorCache<> cache(cache_path);
+    PrimeFactorCache<> cache(CachePath);
     std::vector<mpz_class> sequence;
-    mpz_class current = n;
+    mpz_class current = N;
     size_t index = 0;
     while (true) {
-        mpz_class sum = sum_of_divisors(current, cache, num_threads);
+        mpz_class sum = SumOfDivisors(current, cache, NumThreads);
         if (sum == 0) {
             break;
         }
-        if (verbose)
+        if (Verbose)
             std::cout << index << ": " << sum << std::endl;
         sequence.push_back(sum);
-        if (sum == current || detect_loop(sequence, sum)) {
+        if (sum == current || DetectLoop(sequence, sum)) {
             break;
         }
         current = sum;

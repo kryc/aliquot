@@ -19,7 +19,7 @@ int main(
     PrimeFactorCache cache(cache_path);
     
     std::cout << "Sorting cache at: " << cache_path << std::endl;
-    cache.sort();
+    cache.Sort();
     std::cout << "Done sorting cache." << std::endl;
     
     return 0;

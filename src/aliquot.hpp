@@ -11,21 +11,21 @@
 #include "primefactorcache.hpp"
 
 mpz_class
-sum_of_divisors(
-    const mpz_class& n,
-    PrimeFactorCache<>& cache,
-    const size_t num_threads
+SumOfDivisors(
+    const mpz_class& N,
+    PrimeFactorCache<>& Cache,
+    const size_t NumThreads
 );
 
 mpz_class
-sum_of_divisors(
-    const mpz_class& n
+SumOfDivisors(
+    const mpz_class& N
 );
 
 std::vector<mpz_class>
-aliquot_sequence(
-    const mpz_class& n,
-    const std::string_view cache_path = "",
-    const bool verbose = false,
-    const size_t num_threads = std::thread::hardware_concurrency()
+AliquotSequence(
+    const mpz_class& N,
+    const std::string_view CachePath = "",
+    const bool Verbose = false,
+    const size_t NumThreads = std::thread::hardware_concurrency()
 );

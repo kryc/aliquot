@@ -15,38 +15,38 @@
 #include "primes.hpp"
 
 PrimeFactors
-prime_factors_linear(
-    const mpz_class& n,
-    PrimeFactorCache<>& cache
+PrimeFactorsLinear(
+    const mpz_class& N,
+    PrimeFactorCache<>& Cache
 )
 {
-    IsPrime is_prime;
+    IsPrime prime_checker;
     // Get the span of prime gaps
-    auto gaps = get_prime_gaps();
+    auto gaps = GetPrimeGaps();
 
     PrimeFactors prime_factors;
 
     std::vector<mpz_class> factors;
     uint64_t prime = 2;
     size_t gap_index = 1;
-    mpz_class remainder = n;
+    mpz_class remainder = N;
 
     while (remainder > 1 && gap_index < gaps.size()) {
         // Check if the remainder is prime
-        if (is_prime.check_small(remainder)) {
-            prime_factors.add_factor(remainder);
+        if (prime_checker.CheckSmall(remainder)) {
+            prime_factors.AddFactor(remainder);
             return prime_factors;
         }
         // Check if we have the factor in cache
-        // auto cached_factors = cache.product_exists(remainder);
+        // auto cached_factors = cache.ProductExists(remainder);
         // if (cached_factors.has_value()) {
         //     auto cached = cached_factors.value();
-        //     prime_factors.update(cached);
+        //     prime_factors.Update(cached);
         //     return prime_factors;
         // }
         // Check if prime divides remainder
         while (mpz_divisible_ui_p(remainder.get_mpz_t(), prime)) {
-            prime_factors.add_factor(prime);
+            prime_factors.AddFactor(prime);
             remainder /= prime;
         }
 
@@ -77,7 +77,7 @@ prime_factors_linear(
         // Now use the wheel to factor the remainder
         while (remainder > 1) {
             while (mpz_divisible_p(remainder.get_mpz_t(), candidate.get_mpz_t())) {
-                prime_factors.add_factor(candidate);
+                prime_factors.AddFactor(candidate);
                 remainder /= candidate;
             }
             const uint32_t increment = wheel & kWheel30Mask;
@@ -90,59 +90,58 @@ prime_factors_linear(
 }
 
 bool
-prime_factors_in_range(
-    const mpz_class& n,
-    const mpz_class& sqrt_n,
-    const mpz_class& min_factor,
-    const mpz_class& max_factor,
-    const IsPrime& is_prime,
-    const size_t modulus,
-    std::span<const uint64_t> wheel_gaps,
-    PrimeFactors& prime_factors,
-    std::mutex& factor_mutex,
-    std::atomic<bool>& found
+PrimeFactorsInRange(
+    const mpz_class& N,
+    const mpz_class& MinFactor,
+    const mpz_class& MaxFactor,
+    const IsPrime& PrimeChecker,
+    const size_t Modulus,
+    std::span<const uint64_t> WheelGaps,
+    PrimeFactors& FoundFactors,
+    std::mutex& Mutex,
+    std::atomic<bool>& Found
 )
 {
-    mpz_class candidate = min_factor;
+    mpz_class candidate = MinFactor;
     // Ensure candidate is congruent to 1 mod modulus
     // The min_factor should already be aligned to the wheel, but just in case
-    if (candidate % modulus != 0) {
-        std::lock_guard<std::mutex> lock(factor_mutex);
+    if (candidate % Modulus != 0) {
+        std::lock_guard<std::mutex> lock(Mutex);
         throw std::runtime_error("min_factor is not aligned to wheel modulus.");
     }
     candidate += 1;
 
-    while (candidate < max_factor && !found.load()) {
-        for (auto gapword : wheel_gaps) {
+    while (candidate < MaxFactor && !Found.load()) {
+        for (auto gapword : WheelGaps) {
             for (size_t i = 0; i < kGapsPerWord; ++i) {
                 // Check if candidate divides n
-                if (candidate != 1 && mpz_divisible_p(n.get_mpz_t(), candidate.get_mpz_t())) {
+                if (candidate != 1 && mpz_divisible_p(N.get_mpz_t(), candidate.get_mpz_t())) {
                     // Lock and add factor
-                    std::lock_guard<std::mutex> lock(factor_mutex);
+                    std::lock_guard<std::mutex> lock(Mutex);
                     // Calculate the remaining quotient that hasn't been factored yet
-                    mpz_class current_product = prime_factors.product();
-                    mpz_class quotient = n / current_product;
+                    mpz_class current_product = FoundFactors.Product();
+                    mpz_class quotient = N / current_product;
                     // if (!mpz_divisible_p(quotient.get_mpz_t(), candidate.get_mpz_t())) {
                     //     std::cerr << "Error: Candidate " << candidate << " does not divide current quotient " << quotient << std::endl;
                     //     throw std::runtime_error("Candidate does not divide the current quotient.");
                     // }
                     // Add all powers of this factor that divide the quotient
                     while (mpz_divisible_p(quotient.get_mpz_t(), candidate.get_mpz_t())) {
-                        prime_factors.add_factor(candidate);
+                        FoundFactors.AddFactor(candidate);
                         quotient /= candidate;
                     }
 
-                    if (quotient == n) {
-                        found.store(true);
+                    if (quotient == N) {
+                        Found.store(true);
                         return true;
-                    } else if (quotient > n) {
+                    } else if (quotient > N) {
                         throw std::runtime_error("Product of found factors exceeds n.");
                     } else {
                         // See if we can return early if the remaining quotient is prime
-                        mpz_class remainder = n / quotient;
-                        if (is_prime.check(remainder)) {
-                            prime_factors.add_factor(remainder);
-                            found.store(true);
+                        mpz_class remainder = N / quotient;
+                        if (PrimeChecker.Check(remainder)) {
+                            FoundFactors.AddFactor(remainder);
+                            Found.store(true);
                             return true;
                         }
                     }
@@ -158,22 +157,22 @@ prime_factors_in_range(
 }
 
 PrimeFactors
-prime_factors_mt(
-    const mpz_class& n,
-    PrimeFactorCache<>& cache,
-    const size_t num_threads
+PrimeFactorsMT(
+    const mpz_class& N,
+    PrimeFactorCache<>& Cache,
+    const size_t NumThreads
 )
 {
-    IsPrime is_prime;
+    IsPrime prime_checker;
     // First we work out the range that we want to search. We will use 0 - sqrt(n)
     mpz_class sqrt_n;
-    mpz_sqrt(sqrt_n.get_mpz_t(), n.get_mpz_t());
+    mpz_sqrt(sqrt_n.get_mpz_t(), N.get_mpz_t());
 
     // Next we need to figure out which wheel modulus to use
     // It is always more efficient to use all compute cores than
     // a large modulus. So we pick the smallest modulus that divides
     // the range evenly among threads.
-    mpz_class modulus = sqrt_n / num_threads;
+    mpz_class modulus = sqrt_n / NumThreads;
     // Round down to nearest wheel modulus
     if (modulus >= 223092870) {
         modulus = 223092870;
@@ -196,31 +195,31 @@ prime_factors_mt(
 
     // Get the wheel gaps
     const size_t modulus_ui = modulus.get_ui();
-    std::span<const uint64_t> wheel_gaps = get_wheel(modulus_ui);
+    std::span<const uint64_t> wheel_gaps = GetWheel(modulus_ui);
     
     // Round up sqrt_n to nearest multiple of modulus
     mpz_class max_factor = (sqrt_n + modulus - 1) / modulus * modulus;
-    // std::cout << "Factoring range: 0 to " << max_factor << " using " << num_threads << " threads." << std::endl;
+    // std::cout << "Factoring range: 0 to " << max_factor << " using " << NumThreads << " threads." << std::endl;
 
     // Divide the search space among threads using interleaved distribution
-    // Each thread processes every Nth block (where N = num_threads)
+    // Each thread processes every Nth block (where N = NumThreads)
     std::vector<std::future<bool>> futures;
     std::mutex factor_mutex;
     std::atomic<bool> found = false;
 
     PrimeFactors local_factors;
     // Divide out the small primes below the wheel modulus
-    mpz_class remainder = n;
-    for (auto& prime : get_primes_for_wheel_modulus(modulus.get_ui())) {
+    mpz_class remainder = N;
+    for (auto& prime : GetPrimesForWheelModulus(modulus.get_ui())) {
         while (remainder % prime == 0) {
-            local_factors.add_factor(prime);
+            local_factors.AddFactor(prime);
             remainder /= prime;
         }
     }
     
     // Launch threads with interleaved block distribution
-    for (size_t i = 0; i < num_threads; ++i) {
-        futures.push_back(std::async(std::launch::async, [thread_id = i, num_threads, modulus, &max_factor, &n, &sqrt_n, modulus_ui, wheel_gaps, &local_factors, &factor_mutex, &found, &is_prime]() {
+    for (size_t i = 0; i < NumThreads; ++i) {
+        futures.push_back(std::async(std::launch::async, [thread_id = i, NumThreads, modulus, &max_factor, &N, modulus_ui, wheel_gaps, &local_factors, &factor_mutex, &found, &prime_checker]() {
             // This thread processes blocks: thread_id, thread_id + num_threads, thread_id + 2*num_threads, ...
             mpz_class block_start = thread_id * modulus;
             while (block_start < max_factor && !found) {
@@ -228,10 +227,10 @@ prime_factors_mt(
                 if (block_end > max_factor) {
                     block_end = max_factor;
                 }
-                if (prime_factors_in_range(n, sqrt_n, block_start, block_end, is_prime, modulus_ui, wheel_gaps, local_factors, factor_mutex, found)) {
+                if (PrimeFactorsInRange(N, block_start, block_end, prime_checker, modulus_ui, wheel_gaps, local_factors, factor_mutex, found)) {
                     return true;
                 }
-                block_start += num_threads * modulus;
+                block_start += NumThreads * modulus;
             }
             return false;
         }));
@@ -242,16 +241,16 @@ prime_factors_mt(
         fut.get();
     }
 
-    const mpz_class product = local_factors.product();
-    if (product == n) {
+    const mpz_class product = local_factors.Product();
+    if (product == N) {
         return local_factors;
-    } else if (product > n) {
+    } else if (product > N) {
         throw std::runtime_error("Product of found factors exceeds n.");
-    } else if (product < n) {
+    } else if (product < N) {
         // If we didn't find all factors, check if the remaining quotient is prime
-        const mpz_class rem = n / product;
+        const mpz_class rem = N / product;
         if (rem > 1 && mpz_probab_prime_p(rem.get_mpz_t(), 25) != 0) {
-                local_factors.add_factor(rem);
+                local_factors.AddFactor(rem);
         } else {
             throw std::runtime_error("Failed to fully factor the number in the given range.");
         }
@@ -261,31 +260,31 @@ prime_factors_mt(
 }
 
 PrimeFactors
-prime_factors(
-    const mpz_class& n,
-    PrimeFactorCache<>& cache,
-    const size_t num_threads
+GetPrimeFactors(
+    const mpz_class& N,
+    PrimeFactorCache<>& Cache,
+    const size_t NumThreads
 )
 {
-    auto cached = cache.product_exists(n.get_ui());
+    auto cached = Cache.ProductExists(N.get_ui());
     if (cached.has_value()) {
         return cached.value();
     }
      // If the number is small, use the linear method
-    if (n < 3'000'000) {
-        return prime_factors_linear(n, cache);
+    if (N < 3'000'000) {
+        return PrimeFactorsLinear(N, Cache);
     }
 
     // For larger numbers, use multi-threaded factorization
-    return prime_factors_mt(n, cache, num_threads);
+    return PrimeFactorsMT(N, Cache, NumThreads);
 }
 
 PrimeFactors
-prime_factors(
-    const mpz_class& n
+GetPrimeFactors(
+    const mpz_class& N
 )
 {
     PrimeFactorCache<> cache("");
     const size_t num_threads = std::thread::hardware_concurrency();
-    return prime_factors(n, cache, num_threads);
+    return GetPrimeFactors(N, cache, num_threads);
 }

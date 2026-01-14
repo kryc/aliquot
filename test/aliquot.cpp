@@ -8,10 +8,10 @@
 TEST(Aliquot, SumOfDivisors)
 {
     mpz_class n = 10; // 1, 2, 5
-    auto sum = sum_of_divisors(n);
+    auto sum = SumOfDivisors(n);
     EXPECT_EQ(sum, 8); // 1 + 2 + 5 = 8
     n = 8;
-    sum = sum_of_divisors(n); // 1, 2, 4
+    sum = SumOfDivisors(n); // 1, 2, 4
     EXPECT_EQ(sum, 7); // 1 + 2 + 4 = 7
 }
 

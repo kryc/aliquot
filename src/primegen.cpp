@@ -11,10 +11,13 @@
 
 #include "primes.hpp"
 
-std::string human_readable_size(size_t bytes) {
+std::string
+HumanReadableSize(
+    const size_t Bytes
+) {
     const char* suffixes[] = {"B", "KB", "MB", "GB", "TB"};
     size_t s = 0;
-    double count = static_cast<double>(bytes);
+    double count = static_cast<double>(Bytes);
     while (count >= 1024 && s < 4) {
         s++;
         count /= 1024;
@@ -24,7 +27,10 @@ std::string human_readable_size(size_t bytes) {
     return std::string(buffer);
 }
 
-int main(int argc, char* argv[]) {
+int main(
+    int argc,
+    char* argv[]
+) {
     
     if (argc < 3) {
         std::cerr << "Usage: primegen [options] <output_file>" << std::endl;
@@ -113,7 +119,7 @@ int main(int argc, char* argv[]) {
                 percent = (static_cast<double>(count) / max_prime.get_d()) * 100.0;
             }
             std::cerr << "\r#: " << count
-                    << " (" << human_readable_size(filesize) << "), "
+                    << " (" << HumanReadableSize(filesize) << "), "
                     << "latest prime: " << value
                     << std::fixed << std::setprecision(2)
                     << " (" << percent << "%)" << std::flush;
@@ -121,6 +127,6 @@ int main(int argc, char* argv[]) {
     }
 
     std::cerr << std::endl << "Finished generating primes." << std::endl;
-    std::cerr << "Output file size: " << human_readable_size(filesize) << std::endl;
+    std::cerr << "Output file size: " << HumanReadableSize(filesize) << std::endl;
     return 0;
 }

@@ -18,37 +18,37 @@ constexpr uint32_t kWheel30BitsPerGap = 4;
 constexpr uint32_t kWheel30Mask = (1 << kWheel30BitsPerGap) - 1;
 
 const bool
-load_prime_gaps(
-    std::string_view filename
+LoadPrimeGaps(
+    std::string_view Filename
 );
 
 std::vector<uint8_t>
-generate_prime_gaps(
-    const mpz_class& limit,
-    const bool is_count
+GeneratePrimeGaps(
+    const mpz_class& Limit,
+    const bool IsCount
 );
 
 std::span<const uint8_t>
-get_prime_gaps(
-    const uint64_t fallback_limit = 65536ull
+GetPrimeGaps(
+    const uint64_t FallbackLimit = 65536ull
 );
 
 mpz_class
-get_nth_prime(
-    const size_t n
+GetNthPrime(
+    const size_t N
 );
 
 size_t
-get_prime_index(
-    const mpz_class& prime
+GetPrimeIndex(
+    const mpz_class& Prime
 );
 
 std::span<const uint64_t>
-get_primes_for_wheel_modulus(
-    const size_t modulus
+GetPrimesForWheelModulus(
+    const size_t Modulus
 );
 
-std::span<uint64_t>
-get_wheel(
-    const size_t modulus
+std::span<const uint64_t>
+GetWheel(
+    const size_t Modulus
 );

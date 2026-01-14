@@ -14,7 +14,10 @@ Options:
     -h, --help  Show this help message
 )";
 
-int main(int argc, char* argv[]) {
+int main(
+    int argc,
+    char* argv[]
+) {
 
     if (argc < 2) {
         std::cerr << HELP_STRING << std::endl;
@@ -30,7 +33,7 @@ int main(int argc, char* argv[]) {
         std::string_view arg = argv[i];
         if ((arg == "-p" || arg == "--primes") && i + 1 < argc) {
             prime_gaps = argv[++i];
-            if (!load_prime_gaps(prime_gaps)) {
+            if (!LoadPrimeGaps(prime_gaps)) {
                 std::cerr << "Failed to load prime gaps from " << prime_gaps << std::endl;
                 return 1;
             }
@@ -57,7 +60,7 @@ int main(int argc, char* argv[]) {
 
     try {
         std::cout << "Aliquot sequence for " << number << ":" << std::endl;
-        auto sequence = aliquot_sequence(number, cache_path, true, num_threads);
+        auto sequence = AliquotSequence(number, cache_path, true, num_threads);
         return 0;
     } catch (const std::exception& ex) {
         std::cerr << "Error during prime factorization: " << ex.what() << std::endl;

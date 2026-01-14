@@ -10,33 +10,33 @@
 #include "isprime.hpp"
 
 PrimeFactors
-prime_factors_linear(
-    const mpz_class& n,
-    PrimeFactorCache<>& cache
+PrimeFactorsLinear(
+    const mpz_class& N,
+    PrimeFactorCache<>& Cache
 );
 
 PrimeFactors
-prime_factors_in_range(
-    const mpz_class& n,
-    const mpz_class& min_factor,
-    const mpz_class& max_factor
+PrimeFactorsInRange(
+    const mpz_class& N,
+    const mpz_class& MinFactor,
+    const mpz_class& MaxFactor
 );
 
 PrimeFactors
-prime_factors_mt(
-    const mpz_class& n,
-    PrimeFactorCache<>& cache,
-    const size_t num_threads = std::thread::hardware_concurrency()
+PrimeFactorsMT(
+    const mpz_class& N,
+    PrimeFactorCache<>& Cache,
+    const size_t NumThreads = std::thread::hardware_concurrency()
 );
 
 PrimeFactors
-prime_factors(
-    const mpz_class& n,
-    PrimeFactorCache<>& cache,
-    const size_t num_threads = std::thread::hardware_concurrency()
+GetPrimeFactors(
+    const mpz_class& N,
+    PrimeFactorCache<>& Cache,
+    const size_t NumThreads = std::thread::hardware_concurrency()
 );
 
 PrimeFactors
-prime_factors(
-    const mpz_class& n
+GetPrimeFactors(
+    const mpz_class& N
 );

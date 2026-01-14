@@ -10,82 +10,82 @@
 // A placeholder for an efficient prime factor storage structure
 class PrimeFactors {
 public:
-    void add_factor(
-        const mpz_class& factor
+    void AddFactor(
+        const mpz_class& Factor
     ) {
-        factor_counts[factor]++;
+        m_FactorCounts[Factor]++;
     }
 
-    void update(
-        const PrimeFactors& other
+    void Update(
+        const PrimeFactors& Other
     ) {
-        for (const auto& [prime, count] : other.factor_counts) {
-            factor_counts[prime] += count;
+        for (const auto& [prime, count] : Other.m_FactorCounts) {
+            m_FactorCounts[prime] += count;
         }
     }
 
-    bool has_factor(
-        const mpz_class& factor
+    bool HasFactor(
+        const mpz_class& Factor
     ) const {
-        return factor_counts.find(factor) != factor_counts.end();
+        return m_FactorCounts.find(Factor) != m_FactorCounts.end();
     }
 
     mpz_class
-    largest_factor(
+    LargestFactor(
         void
     ) const {
-        if (factor_counts.empty()) {
+        if (m_FactorCounts.empty()) {
             return 0;
         }
         return std::max_element(
-            factor_counts.begin(),
-            factor_counts.end(),
+            m_FactorCounts.begin(),
+            m_FactorCounts.end(),
             [](const auto& a, const auto& b) {
                 return a.first < b.first;
             })->first;
     }
 
-    size_t count(
+    size_t Count(
         void
     ) const {
         size_t total = 0;
-        for (const auto& pair : factor_counts) {
+        for (const auto& pair : m_FactorCounts) {
             total += pair.second;
         }
         return total;
     }
 
-    size_t size(
+    size_t Size(
         void
     ) const {
-        return factor_counts.size();
+        return m_FactorCounts.size();
     }
 
-    size_t count_of(
-        const mpz_class& factor
+    size_t CountOf(
+        const mpz_class& Factor
     ) const {
-        auto it = factor_counts.find(factor);
-        if (it != factor_counts.end()) {
+        auto it = m_FactorCounts.find(Factor);
+        if (it != m_FactorCounts.end()) {
             return it->second;
         }
         return 0;
     }
 
-    bool empty(
+    bool Empty(
         void
     ) const {
-        return factor_counts.empty();
+        return m_FactorCounts.empty();
     }
 
-    void clear(
+    void Clear(
         void
     ) {
-        factor_counts.clear();
+        m_FactorCounts.clear();
     }
 
-    std::vector<std::pair<mpz_class, size_t>> to_vector() const {
+    std::vector<std::pair<mpz_class, size_t>> ToVector() const {
         std::vector<std::pair<mpz_class, size_t>> vec;
-        for (const auto& pair : factor_counts) {
+        for (const auto& pair : m_FactorCounts) {
             vec.emplace_back(pair.first, pair.second);
         }
         return vec;
@@ -94,12 +94,12 @@ public:
     // Function to convert prime factors to a vector of composite factors
     // By iterating over all combinations of prime factor powers
     std::vector<mpz_class>
-    get_composite(
-        const bool sorted = false
+    GetComposite(
+        const bool Sorted = false
     ) const {
         std::vector<mpz_class> composites;
         composites.push_back(1); // Start with 1 as the first composite
-        for (const auto& [prime, count] : factor_counts) {
+        for (const auto& [prime, count] : m_FactorCounts) {
             size_t current_size = composites.size();
             mpz_class prime_power = 1;
             for (size_t i = 1; i <= count; ++i) {
@@ -109,7 +109,7 @@ public:
                 }
             }
         }
-        if (sorted)
+        if (Sorted)
         {
             std::sort(composites.begin(), composites.end());
         }
@@ -117,12 +117,12 @@ public:
     }
 
     mpz_class
-    product(
+    Product(
         void
     ) const {
         mpz_class prod = 1;
         mpz_class factor;
-        for (const auto& [prime, count] : factor_counts) {
+        for (const auto& [prime, count] : m_FactorCounts) {
             mpz_pow_ui(factor.get_mpz_t(), prime.get_mpz_t(), count);
             prod *= factor;
         }
@@ -130,12 +130,12 @@ public:
     }
 
     uint64_t
-    product64(
+    Product64(
         void
     ) const {
         uint64_t prod = 1;
         mpz_class factor;
-        for (const auto& [prime, count] : factor_counts) {
+        for (const auto& [prime, count] : m_FactorCounts) {
             mpz_pow_ui(factor.get_mpz_t(), prime.get_mpz_t(), count);
             prod *= factor.get_ui();
         }
@@ -143,7 +143,7 @@ public:
     }
 
     std::vector<uint8_t>
-    serialize(
+    Serialize(
         void
     ) const {
         std::vector<uint8_t> data;
@@ -151,34 +151,34 @@ public:
     }
 
     mpz_class
-    max_factor(
+    MaxFactor(
         void
     ) const {
-        if (factor_counts.empty()) {
+        if (m_FactorCounts.empty()) {
             return 0;
         }
         return std::max_element(
-            factor_counts.begin(),
-            factor_counts.end(),
+            m_FactorCounts.begin(),
+            m_FactorCounts.end(),
             [](const auto& a, const auto& b) {
                 return a.first < b.first;
             })->first;
     }
 
     size_t
-    max_power(
+    MaxPower(
         void
     ) const {
-        if (factor_counts.empty()) {
+        if (m_FactorCounts.empty()) {
             return 0;
         }
         return std::max_element(
-            factor_counts.begin(),
-            factor_counts.end(),
+            m_FactorCounts.begin(),
+            m_FactorCounts.end(),
             [](const auto& a, const auto& b) {
                 return a.second < b.second;
             })->second;
     }
 private:
-    std::map<mpz_class, size_t> factor_counts;
+    std::map<mpz_class, size_t> m_FactorCounts;
 };

@@ -7,19 +7,19 @@
 #include "primefactors.hpp"
 
 const size_t
-generate_factors(
-    const uint64_t min_prime,
-    const uint64_t max_prime,
-    const size_t min_num_factors,
-    const size_t max_num_factors,
-    const uint64_t smallest_factor,
-    const std::string_view output
+GenerateFactors(
+    const uint64_t MinPrime,
+    const uint64_t MaxPrime,
+    const size_t MinNumFactors,
+    const size_t MaxNumFactors,
+    const uint64_t SmallestFactor,
+    const std::string_view Output
 )
 {
     // First generate a list of primes in the range [min_prime, max_prime]
     std::vector<uint64_t> primes;
-    mpz_class candidate = min_prime;
-    while (candidate <= max_prime) {
+    mpz_class candidate = MinPrime;
+    while (candidate <= MaxPrime) {
         if (mpz_probab_prime_p(candidate.get_mpz_t(), 25)) {
             primes.push_back(candidate.get_ui());
         }
@@ -27,21 +27,21 @@ generate_factors(
     }
     const size_t num_primes = primes.size();
     
-    // Now find the index of the smallest_factor
+    // Now find the index of the SmallestFactor
     size_t start_index = 0;
     for (size_t i = 0; i < primes.size(); ++i) {
-        if (primes[i] >= smallest_factor) {
+        if (primes[i] >= SmallestFactor) {
             start_index = i;
             break;
         }
     }
 
     // Create the prime factor cache
-    PrimeFactorCache cache(output);
+    PrimeFactorCache cache(Output);
 
     // Calculte the total number of products we will generate
     size_t total_products = 0;
-    for (size_t n = min_num_factors; n <= max_num_factors; ++n) {
+    for (size_t n = MinNumFactors; n <= MaxNumFactors; ++n) {
         total_products += static_cast<size_t>(std::pow(num_primes - start_index, n));
     }
     std::cerr << "Generating approximately " << total_products << " products..." << std::endl;
@@ -50,17 +50,17 @@ generate_factors(
     size_t calculated = 0;
     size_t num_factors = 2;
     PrimeFactors factors;
-    if (min_num_factors >= 2) {
+    if (MinNumFactors >= 2) {
         for (size_t a = start_index; a < num_primes; ++a) {
             for (size_t b = 0; b < num_primes; ++b) {
-                factors.clear();
-                factors.add_factor(primes[a]);
-                factors.add_factor(primes[b]);
-                cache.write(factors);
+                factors.Clear();
+                factors.AddFactor(primes[a]);
+                factors.AddFactor(primes[b]);
+                cache.Write(factors);
                 calculated++;
 
                 if (calculated % 1000000 == 0) {
-                    std::cerr << "\r" << num_factors << "/" << max_num_factors << " "
+                    std::cerr << "\r" << num_factors << "/" << MaxNumFactors << " "
                     << calculated << "/" << total_products << "("
                     << (static_cast<double>(calculated) / total_products) * 100 << "%)" << std::flush;
                 }
@@ -69,20 +69,20 @@ generate_factors(
     }
 
     // Handle three factors
-    if (max_num_factors >= 3) {
+    if (MaxNumFactors >= 3) {
         num_factors = 3;
         for (size_t a = start_index; a < num_primes; ++a) {
             for (size_t b = 0; b < num_primes; ++b) {
                 for (size_t c = 0; c < num_primes; ++c) {
-                    factors.clear();
-                    factors.add_factor(primes[a]);
-                    factors.add_factor(primes[b]);
-                    factors.add_factor(primes[c]);
-                    cache.write(factors);
+                    factors.Clear();
+                    factors.AddFactor(primes[a]);
+                    factors.AddFactor(primes[b]);
+                    factors.AddFactor(primes[c]);
+                    cache.Write(factors);
                     calculated++;
 
                     if (calculated % 1000000 == 0) {
-                        std::cerr << "\r" << num_factors << "/" << max_num_factors << " "
+                        std::cerr << "\r" << num_factors << "/" << MaxNumFactors << " "
                         << calculated << "/" << total_products << "("
                         << (static_cast<double>(calculated) / total_products) * 100 << "%)" << std::flush;
                     }
@@ -92,22 +92,22 @@ generate_factors(
     }
 
     // Handle four factors
-    if (max_num_factors >= 4) {
+    if (MaxNumFactors >= 4) {
         num_factors = 4;
         for (size_t a = start_index; a < num_primes; ++a) {
             for (size_t b = 0; b < num_primes; ++b) {
                 for (size_t c = 0; c < num_primes; ++c) {
                     for (size_t d = 0; d < num_primes; ++d) {
-                        factors.clear();
-                        factors.add_factor(primes[a]);
-                        factors.add_factor(primes[b]);
-                        factors.add_factor(primes[c]);
-                        factors.add_factor(primes[d]);
-                        cache.write(factors);
+                        factors.Clear();
+                        factors.AddFactor(primes[a]);
+                        factors.AddFactor(primes[b]);
+                        factors.AddFactor(primes[c]);
+                        factors.AddFactor(primes[d]);
+                        cache.Write(factors);
                         calculated++;
 
                         if (calculated % 1000000 == 0) {
-                            std::cerr << "\r" << num_factors << "/" << max_num_factors << " "
+                            std::cerr << "\r" << num_factors << "/" << MaxNumFactors << " "
                             << calculated << "/" << total_products << "("
                             << (static_cast<double>(calculated) / total_products) * 100 << "%)" << std::flush;
                         }
@@ -117,21 +117,21 @@ generate_factors(
         }
     }
     
-    cache.close();
+    cache.Close();
     std::cerr << std::endl;
     std::cerr << "Generated " << calculated << " products." << std::endl;
     std::cerr << "Sorting cache files..." << std::endl;
-    cache.sort();
+    cache.Sort();
     std::cerr << "Done sorting cache files." << std::endl;
-    cache.print_stats();
+    cache.PrintStats();
 
     // Write the info
-    cache.write_info(
-        min_prime,
-        max_prime,
-        min_num_factors,
-        max_num_factors,
-        smallest_factor
+    cache.WriteInfo(
+        MinPrime,
+        MaxPrime,
+        MinNumFactors,
+        MaxNumFactors,
+        SmallestFactor
     );
 
     return 0;
@@ -215,7 +215,7 @@ int main(
         return 1;
     }
 
-    generate_factors(
+    GenerateFactors(
         min_prime,
         max_prime,
         min_num_factors,
