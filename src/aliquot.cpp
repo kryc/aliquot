@@ -12,7 +12,7 @@
 mpz_class
 sum_of_divisors(
     const mpz_class& n,
-    PrimeFactorCache& cache,
+    PrimeFactorCache<>& cache,
     const size_t num_threads
 )
 {
@@ -39,7 +39,7 @@ sum_of_divisors(
     const mpz_class& n
 )
 {
-    PrimeFactorCache cache;
+    PrimeFactorCache<> cache;
     return sum_of_divisors(n, cache, std::thread::hardware_concurrency());
 }
 
@@ -65,7 +65,7 @@ aliquot_sequence(
     const size_t num_threads
 )
 {
-    PrimeFactorCache cache(cache_path);
+    PrimeFactorCache<> cache(cache_path);
     std::vector<mpz_class> sequence;
     mpz_class current = n;
     size_t index = 0;

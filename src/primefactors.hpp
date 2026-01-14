@@ -12,7 +12,7 @@
 PrimeFactors
 prime_factors_linear(
     const mpz_class& n,
-    PrimeFactorCache& cache
+    PrimeFactorCache<>& cache
 );
 
 PrimeFactors
@@ -25,14 +25,14 @@ prime_factors_in_range(
 PrimeFactors
 prime_factors_mt(
     const mpz_class& n,
-    PrimeFactorCache& cache,
+    PrimeFactorCache<>& cache,
     const size_t num_threads = std::thread::hardware_concurrency()
 );
 
 PrimeFactors
 prime_factors(
     const mpz_class& n,
-    PrimeFactorCache& cache,
+    PrimeFactorCache<>& cache,
     const size_t num_threads = std::thread::hardware_concurrency()
 );
 

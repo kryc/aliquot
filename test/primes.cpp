@@ -59,6 +59,21 @@ TEST(Primes, PrimeFactorsLarge)
     EXPECT_EQ(factors.count_of(65537), 1);
 }
 
+// Test with a prime much larger than precomputed gaps
+// close to the value 70,000. The 70000th prime is 882377
+TEST(Primes, PrimeFactorsVeryLarge)
+{
+    mpz_class n = mpz_class(882377); // prime
+    n *= 2;
+    n *= 3;
+    auto factors = prime_factors(n);
+    EXPECT_EQ(factors.size(), 3);
+    EXPECT_EQ(factors.count(), 3);
+    EXPECT_EQ(factors.count_of(2), 1);
+    EXPECT_EQ(factors.count_of(3), 1);
+    EXPECT_EQ(factors.count_of(882377), 1);
+}
+
 TEST(Primes, GetNthPrime)
 {
     // Test first 10 primes

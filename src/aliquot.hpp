@@ -13,7 +13,7 @@
 mpz_class
 sum_of_divisors(
     const mpz_class& n,
-    PrimeFactorCache& cache,
+    PrimeFactorCache<>& cache,
     const size_t num_threads
 );
 
