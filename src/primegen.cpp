@@ -9,6 +9,8 @@
 
 #include <gmpxx.h>
 
+#include "primes.hpp"
+
 std::string human_readable_size(size_t bytes) {
     const char* suffixes[] = {"B", "KB", "MB", "GB", "TB"};
     size_t s = 0;
@@ -53,9 +55,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    mpz_class value = 2;
-    mpz_class last = 0;
-    size_t count = 1;
+    mpz_class value = 1;
+    mpz_class last = 5;
+    size_t count = 0;
     size_t filesize = 0;
 
     std::ofstream ofs(output_file.data(), std::ios::binary);
@@ -63,18 +65,38 @@ int main(int argc, char* argv[]) {
         std::cerr << "Error: Could not open output file." << std::endl;
         return 1;
     }
+    // Write the gaps for 2, 3, 5
+    ofs.put(static_cast<char>(2)); // Gap from 0 to 2
+    ofs.put(static_cast<char>(1)); // Gap from 2 to 3
+    ofs.put(static_cast<char>(2)); // Gap from 3 to 5
+    filesize += 3;
+
+    // Use the wheel30 gaps
+    uint32_t wheel = kWheel30;
 
     while (
         (use_count && count < max_prime) ||
         (!use_count && value <= max_prime)) {
-        mpz_class gap = value - last;
+
+        // Increment the value using the wheel
+        const uint32_t increment = wheel & kWheel30Mask;
+        wheel = std::rotr(wheel, kWheel30BitsPerGap);
+        value += increment;
+
+        // Ensure the value is prime as this is not guaranteed by the wheel
+        if (!mpz_probab_prime_p(value.get_mpz_t(), 25)) {
+            continue;
+        }
+
+        // Calculate the gap from the last prime
+        mpz_class primegap = value - last;
         last = value;
 
-        // VLE encode the gap
-        while (gap > 0) {
-            uint8_t byte = gap.get_ui() & 0x7F;
-            gap >>= 7;
-            if (gap > 0) {
+        // VLE encode the primegap
+        while (primegap > 0) {
+            uint8_t byte = primegap.get_ui() & 0x7F;
+            primegap >>= 7;
+            if (primegap > 0) {
                 byte |= 0x80; // More bytes to come
             }
             ofs.put(static_cast<char>(byte));
@@ -96,7 +118,6 @@ int main(int argc, char* argv[]) {
                     << std::fixed << std::setprecision(2)
                     << " (" << percent << "%)" << std::flush;
         }
-        mpz_nextprime(value.get_mpz_t(), value.get_mpz_t());
     }
 
     std::cerr << std::endl << "Finished generating primes." << std::endl;
