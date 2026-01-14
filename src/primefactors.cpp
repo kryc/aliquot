@@ -127,6 +127,7 @@ PrimeFactorsInRange(
                     while (mpz_divisible_p(Remainder.get_mpz_t(), candidate.get_mpz_t())) {
                         FoundFactors.AddFactor(candidate);
                         Remainder /= candidate;
+                        // std::cout << "Found factor: " << candidate << " Remainder: " << Remainder << std::endl;
                     }
 
                     // Check if we've completely factored N
@@ -209,6 +210,13 @@ PrimeFactorsMT(
             local_factors.AddFactor(prime);
             remainder /= prime;
         }
+    }
+    // Check if it is fully factored or the remainder is prime
+    if (remainder == 1) {
+        return local_factors;
+    } else if (prime_checker.Check(remainder)) {
+        local_factors.AddFactor(remainder);
+        return local_factors;
     }
     
     // Launch threads with interleaved block distribution
