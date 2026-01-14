@@ -3,6 +3,7 @@
 #include <cinttypes>
 #include <string_view>
 #include <thread>
+#include <tuple>
 #include <vector>
 
 #include <gmpxx.h>
@@ -10,14 +11,14 @@
 #include "isprime.hpp"
 #include "primefactorcache.hpp"
 
-mpz_class
+std::tuple<mpz_class, PrimeFactors>
 SumOfDivisors(
     const mpz_class& N,
     PrimeFactorCache<>& Cache,
     const size_t NumThreads
 );
 
-mpz_class
+std::tuple<mpz_class, PrimeFactors>
 SumOfDivisors(
     const mpz_class& N
 );

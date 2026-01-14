@@ -118,3 +118,9 @@ private:
     std::vector<bool> m_SmallPrimes;
     uint64_t m_MaxPrime;
 };
+
+// IsPrime should be a singleton for efficiency
+inline IsPrime& GetPrimeChecker() {
+    static IsPrime instance;
+    return instance;
+}

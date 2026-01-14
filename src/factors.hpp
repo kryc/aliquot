@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cinttypes>
 #include <map>
+#include <sstream>
 #include <vector>
 
 #include <gmpxx.h>
@@ -142,12 +143,20 @@ public:
         return prod;
     }
 
-    std::vector<uint8_t>
-    Serialize(
+    std::string
+    GetString(
         void
     ) const {
-        std::vector<uint8_t> data;
-        return data;
+        std::ostringstream oss;
+        bool first = true;
+        for (const auto& [prime, count] : m_FactorCounts) {
+            if (!first) {
+                oss << " * ";
+            }
+            oss << prime << "^" << count;
+            first = false;
+        }
+        return oss.str();
     }
 
     mpz_class

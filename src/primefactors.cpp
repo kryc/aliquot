@@ -20,7 +20,7 @@ PrimeFactorsLinear(
     PrimeFactorCache<>& Cache
 )
 {
-    IsPrime prime_checker;
+    IsPrime& prime_checker = GetPrimeChecker();
     // Get the span of prime gaps
     auto gaps = GetPrimeGaps();
 
@@ -32,18 +32,20 @@ PrimeFactorsLinear(
     mpz_class remainder = N;
 
     while (remainder > 1 && gap_index < gaps.size()) {
-        // Check if the remainder is prime
-        if (prime_checker.CheckSmall(remainder)) {
-            prime_factors.AddFactor(remainder);
-            return prime_factors;
-        }
         // Check if we have the factor in cache
-        // auto cached_factors = cache.ProductExists(remainder);
+        // auto cached_factors = Cache.ProductExists(remainder);
         // if (cached_factors.has_value()) {
         //     auto cached = cached_factors.value();
         //     prime_factors.Update(cached);
         //     return prime_factors;
         // }
+
+        // Check if the remainder is prime
+        if (prime_checker.CheckSmall(remainder)) {
+            prime_factors.AddFactor(remainder);
+            return prime_factors;;
+        }
+
         // Check if prime divides remainder
         while (mpz_divisible_ui_p(remainder.get_mpz_t(), prime)) {
             prime_factors.AddFactor(prime);
@@ -92,6 +94,7 @@ PrimeFactorsLinear(
 bool
 PrimeFactorsInRange(
     const mpz_class& N,
+    mpz_class& Remainder,
     const mpz_class& MinFactor,
     const mpz_class& MaxFactor,
     const IsPrime& PrimeChecker,
@@ -113,37 +116,28 @@ PrimeFactorsInRange(
 
     while (candidate < MaxFactor && !Found.load()) {
         for (auto gapword : WheelGaps) {
-            for (size_t i = 0; i < kGapsPerWord; ++i) {
-                // Check if candidate divides n
-                if (candidate != 1 && mpz_divisible_p(N.get_mpz_t(), candidate.get_mpz_t())) {
+            for (size_t i = 0; i < kGapsPerWord && !Found.load(); ++i) {
+                // Check if candidate divides n and it is prime (the wheel doesn't guarantee primality)
+                if (candidate != 1 &&
+                    mpz_divisible_p(N.get_mpz_t(), candidate.get_mpz_t())
+                    && PrimeChecker.Check(candidate)) {
                     // Lock and add factor
                     std::lock_guard<std::mutex> lock(Mutex);
-                    // Calculate the remaining quotient that hasn't been factored yet
-                    mpz_class current_product = FoundFactors.Product();
-                    mpz_class quotient = N / current_product;
-                    // if (!mpz_divisible_p(quotient.get_mpz_t(), candidate.get_mpz_t())) {
-                    //     std::cerr << "Error: Candidate " << candidate << " does not divide current quotient " << quotient << std::endl;
-                    //     throw std::runtime_error("Candidate does not divide the current quotient.");
-                    // }
                     // Add all powers of this factor that divide the quotient
-                    while (mpz_divisible_p(quotient.get_mpz_t(), candidate.get_mpz_t())) {
+                    while (mpz_divisible_p(Remainder.get_mpz_t(), candidate.get_mpz_t())) {
                         FoundFactors.AddFactor(candidate);
-                        quotient /= candidate;
+                        Remainder /= candidate;
                     }
 
-                    if (quotient == N) {
+                    // Check if we've completely factored N
+                    if (Remainder == 1) {
                         Found.store(true);
                         return true;
-                    } else if (quotient > N) {
-                        throw std::runtime_error("Product of found factors exceeds n.");
-                    } else {
+                    } else if (PrimeChecker.Check(Remainder)) {
                         // See if we can return early if the remaining quotient is prime
-                        mpz_class remainder = N / quotient;
-                        if (PrimeChecker.Check(remainder)) {
-                            FoundFactors.AddFactor(remainder);
-                            Found.store(true);
-                            return true;
-                        }
+                        FoundFactors.AddFactor(Remainder);
+                        Found.store(true);
+                        return true;
                     }
                 }
                 // Get next candidate
@@ -163,7 +157,7 @@ PrimeFactorsMT(
     const size_t NumThreads
 )
 {
-    IsPrime prime_checker;
+    auto& prime_checker = GetPrimeChecker();
     // First we work out the range that we want to search. We will use 0 - sqrt(n)
     mpz_class sqrt_n;
     mpz_sqrt(sqrt_n.get_mpz_t(), N.get_mpz_t());
@@ -219,7 +213,7 @@ PrimeFactorsMT(
     
     // Launch threads with interleaved block distribution
     for (size_t i = 0; i < NumThreads; ++i) {
-        futures.push_back(std::async(std::launch::async, [thread_id = i, NumThreads, modulus, &max_factor, &N, modulus_ui, wheel_gaps, &local_factors, &factor_mutex, &found, &prime_checker]() {
+        futures.push_back(std::async(std::launch::async, [thread_id = i, NumThreads, modulus, &max_factor, &N, modulus_ui, wheel_gaps, &local_factors, &factor_mutex, &found, &prime_checker, &remainder]() {
             // This thread processes blocks: thread_id, thread_id + num_threads, thread_id + 2*num_threads, ...
             mpz_class block_start = thread_id * modulus;
             while (block_start < max_factor && !found) {
@@ -227,7 +221,7 @@ PrimeFactorsMT(
                 if (block_end > max_factor) {
                     block_end = max_factor;
                 }
-                if (PrimeFactorsInRange(N, block_start, block_end, prime_checker, modulus_ui, wheel_gaps, local_factors, factor_mutex, found)) {
+                if (PrimeFactorsInRange(N, remainder, block_start, block_end, prime_checker, modulus_ui, wheel_gaps, local_factors, factor_mutex, found)) {
                     return true;
                 }
                 block_start += NumThreads * modulus;
