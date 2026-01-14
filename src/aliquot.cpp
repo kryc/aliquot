@@ -71,11 +71,11 @@ AliquotSequence(
     mpz_class current = N;
     size_t index = 0;
     // Output the starting number
-    if (Verbose)
+    if (Verbose) {
         std::cout <<
             std::setw(5) << index++ <<
-            " : " <<
-            current << std::endl;
+            " : " << std::flush;
+    }
 
     while (true) {
         auto [sum, factors] = SumOfDivisors(current, cache, NumThreads);
@@ -83,16 +83,10 @@ AliquotSequence(
             break;
         }
         if (Verbose) {
-            std::cout <<
-                std::setw(5) << index <<
+            std::cout << factors.GetString() << std::endl;
+            std::cout << std::setw(5) << index <<
                 " : " <<
-                sum << " = " <<
-                factors.GetString() << std::endl;
-        }
-        if ((index == 37 && sum != 1471882804) || (index == 52 && sum != 220578719452) || (index == 92 && sum != 8244565422068579772))
-        {
-            std::cout << "Debug breakpoint reached at index 37 with sum " << sum << std::endl;
-            break;
+                sum << " = " << std::flush;
         }
         sequence.push_back(sum);
         if (sum == current || DetectLoop(sequence, sum)) {
