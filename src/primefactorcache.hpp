@@ -15,18 +15,69 @@
 
 #include "factors.hpp"
 
+typedef struct _bignum {
+    uint64_t value[512/64]; // Support up to 512-bit products
+    void operator=(const mpz_class& val) {
+        std::memset(value, 0, sizeof(value));
+        mpz_export(value, nullptr, -1, sizeof(uint64_t), 0, 0, val.get_mpz_t());
+    }
+    void operator=(const _bignum& other) {
+        std::memcpy(value, other.value, sizeof(value));
+    }
+    mpz_class to_mpz(void) const {
+        mpz_class result;
+        mpz_import(result.get_mpz_t(), 512/64, -1, sizeof(uint64_t), 0, 0, value);
+        return result;
+    }
+    bool operator<(const _bignum& other) const {
+        for (int i = 511/64; i >= 0; --i) {
+            if (value[i] < other.value[i]) return true;
+            if (value[i] > other.value[i]) return false;
+        }
+        return false;
+    }
+    bool operator<(const mpz_class& other) const {
+        _bignum temp;
+        temp = other;
+        return *this < temp;
+    }
+    bool operator>(const _bignum& other) const {
+        for (int i = 511/64; i >= 0; --i) {
+            if (value[i] > other.value[i]) return true;
+            if (value[i] < other.value[i]) return false;
+        }
+        return false;
+    }
+    bool operator>(const mpz_class& other) const {
+        _bignum temp;
+        temp = other;
+        return *this > temp;
+    }
+    bool operator==(const _bignum& other) const {
+        for (int i = 0; i < 512/64; ++i) {
+            if (value[i] != other.value[i]) return false;
+        }
+        return true;
+    }
+    bool operator==(const mpz_class& other) const {
+        _bignum temp;
+        temp = other;
+        return *this == temp;
+    }
+} BigNum;
+
 typedef struct _index_entry {
-    __uint128_t product;
+    BigNum product;
     size_t num_factors;
 } IndexEntry;
 
 typedef struct _factor {
-    __uint128_t value;
+    BigNum value;
     size_t count;
 } Factor;
 
 struct FactorRecord {
-    __uint128_t product;
+    BigNum product;
     Factor factors[0];  // Flexible array member
 };
 
@@ -115,10 +166,10 @@ public:
 
     std::optional<PrimeFactors>
     product_exists(
-        const uint64_t product
+        const mpz_class& product
     ) {
         // Get the low bytes to find the correct index span
-        uint8_t lowbyte = static_cast<uint8_t>(product & 0xFF);
+        uint8_t lowbyte = static_cast<uint8_t>(product.get_ui() & 0xFF);
         // Check if the index exists
         if (std::filesystem::exists(get_index_path(lowbyte)) == false) {
             return std::nullopt;
@@ -200,7 +251,7 @@ public:
             if (record->product == product) {
                 PrimeFactors factors;
                 for (size_t i = 0; i < num_factors; ++i) {
-                    mpz_class prime_value(record->factors[i].value);
+                    mpz_class prime_value = record->factors[i].value.to_mpz();
                     for (size_t j = 0; j < record->factors[i].count; ++j) {
                         factors.add_factor(prime_value);
                     }
@@ -247,7 +298,7 @@ public:
         record->product = product;
         size_t i = 0;
         for (const auto& [prime, count] : factors.to_vector()) {
-            record->factors[i].value = prime.get_ui();
+            record->factors[i].value = prime;
             record->factors[i].count = static_cast<uint8_t>(count);
             i++;
         }
